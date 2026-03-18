@@ -1,3 +1,11 @@
-node_modules
+# Dependencias
+node_modules/
+
+# Variables de entorno (contienen contraseñas)
 .env
+*.env
+
 dist
+
+SQL
+db/database.sql
