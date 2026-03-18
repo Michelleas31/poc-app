@@ -225,12 +225,15 @@ async function loadEventos() {
       return;
     }
     grid.innerHTML = data.map(ev => `
-      <div class="event-card">
-        <div class="event-card-top">
-          <div>
-            <div class="event-name">${ev.Nombre}</div>
-            <div class="event-date">📅 ${new Date(ev.Fecha + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-          </div>
+        <div class="event-card">
+            <div class="event-card-top">
+                <div>
+                    <div class="event-name">${ev.Nombre}</div>
+                    <div class="event-date">📅 ${(() => {
+                        const [y,m,d] = (ev.Fecha.split('T')[0]).split('-');
+                        return new Date(+y, +m-1, +d).toLocaleDateString('es-MX', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+                    })()}</div>
+                </div>
           ${badgeEstado(ev.Estado)}
         </div>
         <div class="event-hours">🕐 ${ev.HoraInicio} – ${ev.HoraFin}</div>
