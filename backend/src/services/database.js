@@ -1,11 +1,12 @@
+﻿require("dotenv").config();
 const mysql = require("mysql2");
 
 const connection = mysql.createConnection({
-  host:     process.env.DB_HOST     || "host.docker.internal",
-  port:     process.env.DB_PORT     || 3306,
-  user:     process.env.DB_USER     || "root",
-  password: process.env.DB_PASSWORD || "MiChElLe310805",
-  database: process.env.DB_NAME     || "sistematesis"
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT, 10),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
 
 connection.connect((err) => {

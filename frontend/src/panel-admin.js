@@ -651,3 +651,250 @@ async function saveEvaluadores() {
     loadProyectosEval();
   } catch (e) { toast('Error', 'red'); }
 }
+
+// ── GESTIÓN DE PROYECTOS ────────YAHIR──────────────────────────────
+
+let allProyectos = [];
+
+(function() {
+  pageTitles['gestion-proyectos'] = ['Gestión de Proyectos', 'Crea, edita y asigna proyectos a alumnos'];
+  const origLoad = loadSection;
+  loadSection = function(id) {
+    if (id === 'gestion-proyectos') loadGestionProyectos();
+    else origLoad(id);
+  };
+})();
+
+async function loadGestionProyectos() {
+  document.getElementById('gp-tbody').innerHTML =
+    `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr>`;
+  try {
+    const data = await fetch(`${API}/proyectos`).then(r => r.json());
+    allProyectos = Array.isArray(data) ? data : [];
+    renderGP();
+    renderGPStats();
+  } catch(e) {
+    document.getElementById('gp-tbody').innerHTML =
+      `<tr><td colspan="6" style="color:var(--red);padding:16px">Error al cargar proyectos</td></tr>`;
+  }
+}
+
+function renderGPStats() {
+  const total = allProyectos.length;
+  const pend  = allProyectos.filter(p => p.Estatus === 'Pendiente').length;
+  const prog  = allProyectos.filter(p => p.Estatus === 'En progreso').length;
+  const comp  = allProyectos.filter(p => p.Estatus === 'Completado').length;
+  document.getElementById('gp-stats').innerHTML = [
+    ['Total',       total, 'var(--blue)',   'Proyectos registrados'],
+    ['Pendientes',  pend,  'var(--orange)', 'Sin iniciar'],
+    ['En progreso', prog,  'var(--blue)',   'Activos'],
+    ['Completados', comp,  'var(--green)',  'Finalizados'],
+  ].map(([label, val, color, sub]) => `
+    <div class="stat-card" style="--card-color:${color}">
+      <div class="stat-label">${label}</div>
+      <div class="stat-value">${val}</div>
+      <div class="stat-sub">${sub}</div>
+    </div>`).join('');
+}
+
+function filterGP(q) {
+  const f = allProyectos.filter(p =>
+    p.Titulo.toLowerCase().includes(q.toLowerCase()) ||
+    (p.NombreAlumno || '').toLowerCase().includes(q.toLowerCase())
+  );
+  const estatus = document.getElementById('gp-filter-estatus').value;
+  renderGPList(estatus ? f.filter(p => p.Estatus === estatus) : f);
+}
+
+function renderGP() {
+  const estatus  = document.getElementById('gp-filter-estatus').value;
+  const filtered = estatus ? allProyectos.filter(p => p.Estatus === estatus) : allProyectos;
+  renderGPList(filtered);
+}
+
+function renderGPList(list) {
+  const tbody = document.getElementById('gp-tbody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted)">No hay proyectos</td></tr>`;
+    return;
+  }
+  const colors = { 'Pendiente':'badge-orange', 'En progreso':'badge-blue', 'Completado':'badge-green' };
+  tbody.innerHTML = list.map(p => {
+    const pct      = p.Progreso || 0;
+    const barColor = pct === 100 ? 'var(--green)' : pct > 0 ? 'var(--blue)' : 'var(--border)';
+    return `<tr>
+      <td class="td-name">${p.Titulo}</td>
+      <td>${p.NombreAlumno   || '<span style="color:var(--text-muted)">Sin asignar</span>'}</td>
+      <td>${p.NombreProfesor || '<span style="color:var(--text-muted)">Sin asignar</span>'}</td>
+      <td style="min-width:120px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .4s"></div>
+          </div>
+          <span style="font-size:11px;color:var(--text-muted);min-width:28px">${pct}%</span>
+        </div>
+      </td>
+      <td><span class="badge ${colors[p.Estatus] || 'badge-gray'}">${p.Estatus}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="editProyecto(${JSON.stringify(p).replace(/"/g,'&quot;')})">Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEtapas(${p.ProyectoID},'${p.Titulo.replace(/'/g,"\\'")}')">Etapas</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteProyecto(${p.ProyectoID},'${p.Titulo.replace(/'/g,"\\'")}')">Eliminar</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function openModalNuevoProyecto() {
+  document.getElementById('modal-proyecto-title').textContent = 'Nuevo proyecto';
+  document.getElementById('proy-id').value      = '';
+  document.getElementById('proy-titulo').value  = '';
+  document.getElementById('proy-desc').value    = '';
+  document.getElementById('proy-inicio').value  = '';
+  document.getElementById('proy-fin').value     = '';
+  await loadUsuariosSelect();
+  openModal('modal-proyecto');
+}
+
+async function loadUsuariosSelect() {
+  try {
+    const data      = await fetch(`${API}/usuarios`).then(r => r.json());
+    const alumnos   = data.filter(u => u.Rol === 'Alumno'   && u.Activo);
+    const profesores = data.filter(u => u.Rol === 'Profesor' && u.Activo);
+    document.getElementById('proy-alumno').innerHTML =
+      '<option value="">Seleccionar alumno...</option>' +
+      alumnos.map(u => `<option value="${u.UsuarioID}">${u.Nombre}</option>`).join('');
+    document.getElementById('proy-profesor').innerHTML =
+      '<option value="">Sin asignar</option>' +
+      profesores.map(u => `<option value="${u.UsuarioID}">${u.Nombre}</option>`).join('');
+  } catch(e) {}
+}
+
+function editProyecto(p) {
+  document.getElementById('modal-proyecto-title').textContent = 'Editar proyecto';
+  document.getElementById('proy-id').value     = p.ProyectoID;
+  document.getElementById('proy-titulo').value = p.Titulo;
+  document.getElementById('proy-desc').value   = p.Descripcion || '';
+  document.getElementById('proy-inicio').value = p.FechaInicio?.split('T')[0] || '';
+  document.getElementById('proy-fin').value    = p.FechaFin?.split('T')[0]    || '';
+  loadUsuariosSelect().then(() => {
+    document.getElementById('proy-alumno').value   = p.AlumnoID   || '';
+    document.getElementById('proy-profesor').value = p.ProfesorID || '';
+  });
+  openModal('modal-proyecto');
+}
+
+async function saveProyecto() {
+  const id   = document.getElementById('proy-id').value;
+  const body = {
+    Titulo:      document.getElementById('proy-titulo').value.trim(),
+    Descripcion: document.getElementById('proy-desc').value.trim(),
+    FechaInicio: document.getElementById('proy-inicio').value,
+    FechaFin:    document.getElementById('proy-fin').value || undefined,
+    AlumnoID:    document.getElementById('proy-alumno').value,
+    ProfesorID:  document.getElementById('proy-profesor').value || undefined,
+  };
+  if (!body.Titulo)      return toast('El título es obligatorio', 'red');
+  if (!body.FechaInicio) return toast('La fecha de inicio es obligatoria', 'red');
+  if (!body.AlumnoID)    return toast('Selecciona un alumno', 'red');
+  try {
+    if (id) {
+      await fetch(`${API}/proyectos/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+      await fetch(`${API}/proyectos/${id}/asignar-profesor`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ProfesorID: body.ProfesorID || null }) });
+    } else {
+      await fetch(`${API}/proyectos`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    }
+    closeModal('modal-proyecto');
+    toast(id ? 'Proyecto actualizado ✓' : 'Proyecto creado ✓');
+    loadGestionProyectos();
+  } catch(e) { toast('Error al guardar', 'red'); }
+}
+
+async function deleteProyecto(id, titulo) {
+  if (!confirm(`¿Eliminar el proyecto "${titulo}"?`)) return;
+  try {
+    await fetch(`${API}/proyectos/${id}`, { method:'DELETE' });
+    toast('Proyecto eliminado');
+    loadGestionProyectos();
+  } catch(e) { toast('Error', 'red'); }
+}
+
+// ── ETAPAS ────────────────────────────────────────────────────
+
+async function openEtapas(proyectoId, titulo) {
+  document.getElementById('etapas-proy-id').value            = proyectoId;
+  document.getElementById('modal-etapas-title').textContent  = `Etapas — ${titulo}`;
+  document.getElementById('nueva-etapa-nombre').value = '';
+  document.getElementById('nueva-etapa-desc').value   = '';
+  document.getElementById('nueva-etapa-fecha').value  = '';
+  openModal('modal-etapas');
+  await loadEtapas(proyectoId);
+}
+
+async function loadEtapas(proyectoId) {
+  const list = document.getElementById('etapas-list');
+  list.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando...</div>';
+  try {
+    const data = await fetch(`${API}/proyectos/${proyectoId}/etapas`).then(r => r.json());
+    if (!Array.isArray(data) || !data.length) {
+      list.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Sin etapas. Agrega la primera abajo.</div>';
+      return;
+    }
+    list.innerHTML = data.map(e => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:9px;border:1px solid var(--border)">
+        <input type="checkbox" ${e.Completada ? 'checked' : ''}
+          onchange="toggleEtapa(${e.EtapaID},this.checked,${proyectoId})"
+          style="width:16px;height:16px;accent-color:var(--green);flex-shrink:0;cursor:pointer">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500;color:${e.Completada ? 'var(--text-muted)' : 'var(--text)'};text-decoration:${e.Completada ? 'line-through' : 'none'}">${e.Nombre}</div>
+          ${e.Descripcion ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${e.Descripcion}</div>` : ''}
+          ${e.FechaFin    ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">📅 Límite: ${new Date(e.FechaFin).toLocaleDateString('es-MX')}</div>` : ''}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteEtapa(${e.EtapaID},${proyectoId})">✕</button>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:var(--red);font-size:13px">Error al cargar</div>';
+  }
+}
+
+async function toggleEtapa(etapaId, completada, proyectoId) {
+  try {
+    const res  = await fetch(`${API}/etapas/${etapaId}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ Completada: completada })
+    });
+    const data = await res.json();
+    toast(`Progreso: ${data.progreso}%`);
+    loadEtapas(proyectoId);
+    loadGestionProyectos();
+  } catch(e) { toast('Error', 'red'); }
+}
+
+async function agregarEtapa() {
+  const proyectoId = document.getElementById('etapas-proy-id').value;
+  const body = {
+    Nombre:      document.getElementById('nueva-etapa-nombre').value.trim(),
+    Descripcion: document.getElementById('nueva-etapa-desc').value.trim(),
+    FechaFin:    document.getElementById('nueva-etapa-fecha').value || undefined,
+  };
+  if (!body.Nombre) return toast('Escribe el nombre de la etapa', 'red');
+  try {
+    await fetch(`${API}/proyectos/${proyectoId}/etapas`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    });
+    document.getElementById('nueva-etapa-nombre').value = '';
+    document.getElementById('nueva-etapa-desc').value   = '';
+    document.getElementById('nueva-etapa-fecha').value  = '';
+    toast('Etapa agregada');
+    loadEtapas(proyectoId);
+  } catch(e) { toast('Error', 'red'); }
+}
+
+async function deleteEtapa(etapaId, proyectoId) {
+  if (!confirm('¿Eliminar esta etapa?')) return;
+  try {
+    await fetch(`${API}/etapas/${etapaId}`, { method:'DELETE' });
+    toast('Etapa eliminada');
+    loadEtapas(proyectoId);
+    loadGestionProyectos();
+  } catch(e) { toast('Error', 'red'); }
+}
