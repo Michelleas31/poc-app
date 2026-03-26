@@ -1,7 +1,4 @@
-version: "3.8"
-
 services:
-
   frontend:
     build: ./frontend
     ports:
@@ -11,13 +8,20 @@ services:
     build: ./backend
     ports:
       - "3000:3000"
-    volumes:
-      - ./backend:/app
+    restart: on-failure
+    depends_on:
+      - database
 
   database:
     image: mariadb
+    container_name: poc-mariadb
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: poc
+      MYSQL_DATABASE: sistematesis
     ports:
-      - "3306:3306"
+      - "3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+volumes:
+  mariadb_data:

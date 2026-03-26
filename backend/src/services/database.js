@@ -1,19 +1,22 @@
 const mysql = require("mysql2");
 
-const connection = mysql.createConnection({
-  host:     process.env.DB_HOST     || "host.docker.internal",
-  port:     process.env.DB_PORT     || 3306,
-  user:     process.env.DB_USER     || "root",
-  password: process.env.DB_PASSWORD || "MiChElLe310805",
-  database: process.env.DB_NAME     || "sistematesis"
+const pool = mysql.createPool({
+  host: "database",
+  user: "root",
+  password: "root",
+  database: "sistematesis",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
-connection.connect((err) => {
+pool.getConnection((err, connection) => {
   if (err) {
     console.error("Error conectando a la base:", err);
     return;
   }
   console.log("Conectado a la base sistematesis");
+  connection.release();
 });
 
-module.exports = connection;
+module.exports = pool;
