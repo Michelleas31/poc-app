@@ -149,7 +149,7 @@
  
     <div class="section" id="section-rubricas">
       <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
-        <button class="btn btn-primary" onclick="openModal('modal-rubrica')">+ Nueva rubrica</button>
+        <button class="btn btn-primary" onclick="openModalRubrica()">+ Nueva rubrica</button>
       </div>
       <div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Creada por</th><th>Criterios</th><th>Estado</th><th>Acciones</th></tr></thead>
       <tbody id="rubricas-tbody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table></div>
@@ -271,17 +271,27 @@
 </div>
  
 <div class="modal-overlay" id="modal-rubrica">
-  <div class="modal">
+  <div class="modal" style="max-width:1100px;width:min(1100px,96vw)">
     <div class="modal-head"><h3>Nueva rubrica</h3><button class="modal-close" onclick="closeModal('modal-rubrica')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
       <div class="form-group"><label>Nombre de la rubrica</label><input class="form-control" id="rub-nombre" placeholder="Ej. Rubrica Feria de Proyectos"></div>
       <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="rub-desc" rows="2" style="resize:vertical" placeholder="Descripcion opcional..."></textarea></div>
-      <div style="margin-top:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <label style="font-size:12px;color:var(--text-dim);font-weight:500">Criterios de evaluacion</label>
+
+      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+          <div>
+            <label style="font-size:12px;color:var(--text-dim);font-weight:600;display:block">Criterios de evaluacion</label>
+            <span style="font-size:12px;color:var(--text-muted)">Cada criterio incluye 4 niveles editables estilo Classroom.</span>
+          </div>
           <button class="btn btn-ghost btn-sm" onclick="addCriterio()">+ Agregar criterio</button>
         </div>
-        <div id="criterios-list" style="display:flex;flex-direction:column;gap:8px"></div>
+
+        <div style="display:grid;grid-template-columns:minmax(280px,320px) minmax(0,1fr);gap:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)">Configuracion del criterio</div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)">Niveles de desempeño</div>
+        </div>
+
+        <div id="criterios-list" style="display:flex;flex-direction:column;gap:14px"></div>
       </div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-rubrica')">Cancelar</button><button class="btn btn-primary" onclick="saveRubrica()">Guardar</button></div>
