@@ -80,6 +80,16 @@ function badgeRol(rol) {
   const m = { Admin: 'badge-yellow', Profesor: 'badge-blue', Alumno: 'badge-green' };
   return `<span class="badge ${m[rol] || 'badge-gray'}">${rol}</span>`;
 }
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
  
 // ── DASHBOARD ─────────────────────────────────────────────────
 async function loadDashboard() {
@@ -323,7 +333,6 @@ async function loadAulas() {
         <td><button class="btn btn-danger btn-sm" onclick="deleteAula(${a.AulaID},'${a.Nombre}')">Eliminar</button></td>
       </tr>`).join('');
  
-    // Llenar select de aula en modal de horario
     document.getElementById('hor-aula').innerHTML =
       data.map(a => `<option value="${a.AulaID}">${a.Nombre}</option>`).join('');
   } catch (e) {
@@ -431,6 +440,163 @@ async function deleteHorario(id) {
 }
  
 // ── RÚBRICAS ──────────────────────────────────────────────────
+const DEFAULT_RUBRICA_LEVELS = [
+  {
+    nombre: 'Sobresaliente',
+    puntaje: 3,
+    descripcion: 'Cumple ampliamente con lo esperado en este criterio.',
+    orden: 1,
+  },
+  {
+    nombre: 'Bien',
+    puntaje: 2,
+    descripcion: 'Cumple adecuadamente con lo esperado en este criterio.',
+    orden: 2,
+  },
+  {
+    nombre: 'Suficiente',
+    puntaje: 1,
+    descripcion: 'Cumple parcialmente con lo esperado en este criterio.',
+    orden: 3,
+  },
+  {
+    nombre: 'Insuficiente',
+    puntaje: 0,
+    descripcion: 'No cumple con lo esperado en este criterio.',
+    orden: 4,
+  },
+];
+
+let criterios = [];
+
+function createDefaultLevels() {
+  return DEFAULT_RUBRICA_LEVELS.map(nivel => ({ ...nivel }));
+}
+
+function createDefaultCriterio() {
+  return {
+    nombre: '',
+    descripcion: '',
+    orden: criterios.length + 1,
+    niveles: createDefaultLevels(),
+  };
+}
+
+function normalizarOrdenCriterios() {
+  criterios.forEach((criterio, index) => {
+    criterio.orden = index + 1;
+    criterio.niveles = (criterio.niveles || [])
+      .slice()
+      .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+      .map((nivel, nivelIndex) => ({
+        ...nivel,
+        orden: nivelIndex + 1,
+      }));
+  });
+}
+
+function resetRubricaForm() {
+  criterios = [];
+  document.getElementById('rub-nombre').value = '';
+  document.getElementById('rub-desc').value = '';
+  renderCriterios();
+}
+
+function openModalRubrica() {
+  resetRubricaForm();
+  addCriterio();
+  openModal('modal-rubrica');
+}
+
+function renderCriterios() {
+  const list = document.getElementById('criterios-list');
+  if (!list) return;
+
+  if (!criterios.length) {
+    list.innerHTML = `
+      <div style="padding:18px;border:1px dashed var(--border);border-radius:12px;background:var(--surface2);text-align:center;color:var(--text-muted);font-size:13px">
+        Agrega al menos un criterio para construir la rubrica.
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = criterios.map((criterio, criterioIndex) => `
+    <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
+      <div style="display:grid;grid-template-columns:minmax(280px,320px) minmax(0,1fr);gap:0">
+        <div style="padding:16px;border-right:1px solid var(--border);background:var(--surface2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+            <div>
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.45px;color:var(--text-muted);font-weight:700">Criterio ${criterioIndex + 1}</div>
+              <div style="font-size:12px;color:var(--text-dim)">Orden ${criterioIndex + 1}</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="removeCriterio(${criterioIndex})">Eliminar</button>
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px">
+            <label>Nombre del criterio</label>
+            <input class="form-control" value="${escapeHtml(criterio.nombre)}" placeholder="Ej. Desarrollo de la temática del proyecto" oninput="updateCriterioField(${criterioIndex}, 'nombre', this.value)">
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label>Descripcion del criterio</label>
+            <textarea class="form-control" rows="4" style="resize:vertical" placeholder="Opcional" oninput="updateCriterioField(${criterioIndex}, 'descripcion', this.value)">${escapeHtml(criterio.descripcion || '')}</textarea>
+          </div>
+        </div>
+
+        <div style="padding:16px">
+          <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
+            ${criterio.niveles.map((nivel, nivelIndex) => `
+              <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <span class="badge badge-blue">Nivel ${nivelIndex + 1}</span>
+                  <span style="font-size:11px;color:var(--text-muted)">Orden ${nivelIndex + 1}</span>
+                </div>
+
+                <div>
+                  <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:6px">Nombre</label>
+                  <input class="form-control" value="${escapeHtml(nivel.nombre)}" oninput="updateNivelField(${criterioIndex}, ${nivelIndex}, 'nombre', this.value)">
+                </div>
+
+                <div>
+                  <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:6px">Puntaje</label>
+                  <input class="form-control" type="number" min="0" step="1" value="${escapeHtml(nivel.puntaje)}" oninput="updateNivelField(${criterioIndex}, ${nivelIndex}, 'puntaje', this.value)">
+                </div>
+
+                <div style="flex:1">
+                  <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:6px">Descripcion</label>
+                  <textarea class="form-control" rows="5" style="resize:vertical" oninput="updateNivelField(${criterioIndex}, ${nivelIndex}, 'descripcion', this.value)">${escapeHtml(nivel.descripcion)}</textarea>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addCriterio() {
+  criterios.push(createDefaultCriterio());
+  normalizarOrdenCriterios();
+  renderCriterios();
+}
+
+function removeCriterio(index) {
+  criterios.splice(index, 1);
+  normalizarOrdenCriterios();
+  renderCriterios();
+}
+
+function updateCriterioField(index, field, value) {
+  if (!criterios[index]) return;
+  criterios[index][field] = value;
+}
+
+function updateNivelField(criterioIndex, nivelIndex, field, value) {
+  if (!criterios[criterioIndex] || !criterios[criterioIndex].niveles[nivelIndex]) return;
+  criterios[criterioIndex].niveles[nivelIndex][field] = value;
+}
+
 async function loadRubricas() {
   const tbody = document.getElementById('rubricas-tbody');
   try {
@@ -441,9 +607,15 @@ async function loadRubricas() {
     }
     tbody.innerHTML = data.map(r => `
       <tr>
-        <td class="td-name">${r.Nombre}</td>
-        <td>${r.NombreProfesor || 'Admin'}</td>
-        <td><span class="badge badge-blue">${r.TotalCriterios || 0} criterios</span></td>
+        <td class="td-name">
+          <div>${escapeHtml(r.Nombre)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${escapeHtml(r.Descripcion || 'Sin descripcion')}</div>
+        </td>
+        <td>${escapeHtml(r.NombreProfesor || 'Admin')}</td>
+        <td>
+          <span class="badge badge-blue">${r.TotalCriterios || 0} criterios</span>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">${r.TotalNiveles || 0} niveles · ${r.PuntajeMaximo || 0} pts max.</div>
+        </td>
         <td>${r.Activa
           ? '<span class="badge badge-green">Activa</span>'
           : '<span class="badge badge-gray">Inactiva</span>'}</td>
@@ -453,50 +625,87 @@ async function loadRubricas() {
     tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);padding:16px">Error</td></tr>`;
   }
 }
- 
-let criterios = [];
- 
-function addCriterio() {
-  const idx  = criterios.length;
-  criterios.push({ nombre: '', puntos: 10 });
-  const list = document.getElementById('criterios-list');
-  const div  = document.createElement('div');
-  div.style.cssText = 'display:flex;gap:8px;align-items:center';
-  div.innerHTML = `
-    <input class="form-control" placeholder="Nombre del criterio" oninput="criterios[${idx}].nombre=this.value" style="flex:1">
-    <input class="form-control" type="number" value="10" min="1" max="100" oninput="criterios[${idx}].puntos=+this.value" style="width:70px">
-    <span style="font-size:11px;color:var(--text-muted)">pts</span>
-    <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove();criterios.splice(${idx},1)">✕</button>`;
-  list.appendChild(div);
-}
- 
+
 async function saveRubrica() {
   const body = {
-    Nombre:      document.getElementById('rub-nombre').value,
-    Descripcion: document.getElementById('rub-desc').value,
-    criterios,
+    Nombre: document.getElementById('rub-nombre').value.trim(),
+    Descripcion: document.getElementById('rub-desc').value.trim(),
+    criterios: criterios.map((criterio, criterioIndex) => ({
+      nombre: (criterio.nombre || '').trim(),
+      descripcion: (criterio.descripcion || '').trim(),
+      orden: criterioIndex + 1,
+      niveles: (criterio.niveles || []).map((nivel, nivelIndex) => ({
+        nombre: (nivel.nombre || '').trim(),
+        puntaje: Number(nivel.puntaje),
+        descripcion: (nivel.descripcion || '').trim(),
+        orden: nivelIndex + 1,
+      })),
+    })),
   };
-  if (!body.Nombre)          return toast('Ingresa nombre de rúbrica', 'red');
-  if (!criterios.length)     return toast('Agrega al menos un criterio', 'red');
+
+  if (!body.Nombre) {
+    return toast('Ingresa nombre de rúbrica', 'red');
+  }
+
+  if (!body.criterios.length) {
+    return toast('Agrega al menos un criterio', 'red');
+  }
+
+  for (const criterio of body.criterios) {
+    if (!criterio.nombre) {
+      return toast('Todos los criterios deben tener nombre', 'red');
+    }
+
+    if (!Array.isArray(criterio.niveles) || criterio.niveles.length !== 4) {
+      return toast(`El criterio "${criterio.nombre}" debe tener 4 niveles`, 'red');
+    }
+
+    for (const nivel of criterio.niveles) {
+      if (!nivel.nombre || !nivel.descripcion || Number.isNaN(nivel.puntaje) || nivel.puntaje < 0) {
+        return toast(`Revisa los niveles del criterio "${criterio.nombre}"`, 'red');
+      }
+    }
+  }
+
   try {
-    await fetch(`${API}/rubricas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const response = await fetch(`${API}/rubricas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return toast(data.message || 'Error al guardar la rúbrica', 'red');
+    }
+
     closeModal('modal-rubrica');
-    criterios = [];
-    document.getElementById('criterios-list').innerHTML = '';
+    resetRubricaForm();
     toast('Rúbrica creada');
     loadRubricas();
-  } catch (e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast('Error', 'red');
+  }
 }
- 
+
 async function deleteRubrica(id) {
   if (!confirm('¿Eliminar esta rúbrica?')) return;
   try {
-    await fetch(`${API}/rubricas/${id}`, { method: 'DELETE' });
+    const response = await fetch(`${API}/rubricas/${id}`, { method: 'DELETE' });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return toast(data.message || 'No fue posible eliminar la rúbrica', 'red');
+    }
+
     toast('Rúbrica eliminada');
     loadRubricas();
-  } catch (e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast('Error', 'red');
+  }
 }
- 
+
 // ── PROYECTOS (APROBAR) ───────────────────────────────────────
 async function loadEventosSelect2() {
   try {
