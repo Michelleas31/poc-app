@@ -1,11 +1,14 @@
 # Dependencias
 node_modules/
+backend/node_modules/
 
 # Variables de entorno locales
 .env
+backend/.env
 
 # Build
 dist/
 
 # SQL local
 db/database.sql
+
