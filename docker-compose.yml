@@ -9,19 +9,16 @@ services:
     ports:
       - "3000:3000"
     restart: on-failure
-    depends_on:
-      - database
-
-  database:
-    image: mariadb
-    container_name: poc-mariadb
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: sistematesis
-    ports:
-      - "3307:3306"
+      - DB_HOST=host.docker.internal
+      - DB_PORT=3307
+      - DB_USER=root
+      - DB_PASSWORD=123
+      - DB_NAME=sistematesis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - ./backend/.env:/app/.env
 
 volumes:
   mariadb_data:

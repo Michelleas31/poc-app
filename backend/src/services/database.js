@@ -1,32 +1,26 @@
-﻿require("dotenv").config();
+﻿require("dotenv").config({ path: '/app/.env' });
 const mysql = require("mysql2");
 
-<<<<<<< HEAD
+console.log("🔧 Variables cargadas:");
+console.log("  DB_HOST:", process.env.DB_HOST);
+console.log("  DB_PORT:", process.env.DB_PORT);
+console.log("  DB_USER:", process.env.DB_USER);
+console.log("  DB_NAME:", process.env.DB_NAME);
+
 const connection = mysql.createConnection({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10),
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
-=======
-const pool = mysql.createPool({
-  host: "database",
-  user: "root",
-  password: "root",
-  database: "sistematesis",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
->>>>>>> cc7e552 (feat: avances de Yahir)
+  host: process.env.DB_HOST || "host.docker.internal",
+  port: parseInt(process.env.DB_PORT, 10) || 3307,
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "root",
+  database: process.env.DB_NAME || "sistematesis"
 });
 
-pool.getConnection((err, connection) => {
+connection.connect((err) => {
   if (err) {
-    console.error("Error conectando a la base:", err);
-    return;
+    console.error("❌ Error conectando:", err.message);
+    process.exit(1);
   }
-  console.log("Conectado a la base sistematesis");
-  connection.release();
+  console.log("✅ Conectado a sistematesis");
 });
 
-module.exports = pool;
+module.exports = connection;
