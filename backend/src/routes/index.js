@@ -1,7 +1,10 @@
 const express = require("express");
-const router  = express.Router();
-const db      = require("../services/database");
+const router = express.Router();
+const db = require("../services/database");
 const dbPromise = db.promise();
+
+
+// FUNCIONES UTILITARIAS
 
 function normalizarTexto(valor) {
   return typeof valor === "string" ? valor.trim() : "";
@@ -13,9 +16,38 @@ function obtenerEntero(valor, fallback = null) {
   return Number.isInteger(numero) ? numero : fallback;
 }
 
+function nivelesPorDefecto() {
+  return [
+    {
+      nombre: "Sobresaliente",
+      puntaje: 3,
+      descripcion: "Desarrolla la temática del proyecto amplia y complementaria",
+      orden: 1
+    },
+    {
+      nombre: "Bien",
+      puntaje: 2,
+      descripcion: "Desarrolla la temática del proyecto",
+      orden: 2
+    },
+    {
+      nombre: "Suficiente",
+      puntaje: 1,
+      descripcion: "Define esquemáticamente la temática del proyecto",
+      orden: 3
+    },
+    {
+      nombre: "Insuficiente",
+      puntaje: 0,
+      descripcion: "No define la temática del proyecto",
+      orden: 4
+    }
+  ];
+}
+
 function validarRubricaPayload(body = {}) {
-  const Nombre = normalizarTexto(body.Nombre);
-  const Descripcion = normalizarTexto(body.Descripcion) || null;
+  const Nombre = normalizarTexto(body.Nombre || body.nombre);
+  const Descripcion = normalizarTexto(body.Descripcion || body.descripcion) || null;
   const criteriosEntrada = Array.isArray(body.criterios) ? body.criterios : [];
 
   if (!Nombre) {
@@ -103,7 +135,7 @@ function validarRubricaPayload(body = {}) {
 // GET todos los usuarios (acepta ?rol=Profesor para filtrar)
 router.get("/usuarios", (req, res) => {
   const { rol } = req.query;
-  let query  = "SELECT * FROM Usuarios";
+  let query = "SELECT * FROM Usuarios";
   const params = [];
   if (rol) {
     query += " WHERE Rol = ?";
@@ -137,9 +169,9 @@ router.put("/usuarios/:id", (req, res) => {
   const campos = [];
   const valores = [];
 
-  if (Nombre)     { campos.push("Nombre = ?"); valores.push(Nombre); }
-  if (Email)      { campos.push("Email = ?"); valores.push(Email); }
-  if (Rol)        { campos.push("Rol = ?"); valores.push(Rol); }
+  if (Nombre) { campos.push("Nombre = ?"); valores.push(Nombre); }
+  if (Email) { campos.push("Email = ?"); valores.push(Email); }
+  if (Rol) { campos.push("Rol = ?"); valores.push(Rol); }
   if (Contraseña) { campos.push("Contraseña = ?"); valores.push(Contraseña); }
 
   if (!campos.length) return res.status(400).json({ message: "Nada que actualizar" });
@@ -315,7 +347,7 @@ router.delete("/horarios/:id", (req, res) => {
 });
 
 // ══════════════════════════════════════════
-// RÚBRICAS
+// RÚBRICAS (CONSOLIDADO)
 // ══════════════════════════════════════════
 
 // GET todas las rúbricas con resumen
@@ -348,7 +380,7 @@ router.get("/rubricas", async (req, res) => {
 
     res.json(results);
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ message: "Error al obtener rúbricas", error: err });
   }
 });
 
@@ -419,7 +451,7 @@ router.get("/rubricas/:id", async (req, res) => {
     rubrica.criterios = Array.from(criteriosMap.values());
     res.json(rubrica);
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ message: "Error al obtener rúbrica", error: err });
   }
 });
 
@@ -476,10 +508,11 @@ router.post("/rubricas", async (req, res) => {
       await dbPromise.rollback();
     } catch (_) {}
 
-    res.status(500).json(err);
+    res.status(500).json({ message: "Error al crear rúbrica", error: err });
   }
 });
 
+// DELETE rúbrica
 router.delete("/rubricas/:id", async (req, res) => {
   try {
     const [[rubrica]] = await dbPromise.query(
@@ -537,33 +570,44 @@ router.delete("/rubricas/:id", async (req, res) => {
       await dbPromise.rollback();
     } catch (_) {}
 
-    res.status(500).json(err);
+    res.status(500).json({ message: "Error al eliminar rúbrica", error: err });
   }
 });
 
 // ══════════════════════════════════════════
-// PROYECTOS EN EVENTOS (APROBAR / RECHAZAR)
+// PROYECTOS EN EVENTOS
 // ══════════════════════════════════════════
 
-// GET proyectos inscritos en eventos (acepta ?eventoId= y ?estado=)
+// ── GET /eventos/proyectos?proyectoId= ──────────────────────
 router.get("/eventos/proyectos", (req, res) => {
-  const { eventoId, estado } = req.query;
+  const { eventoId, estado, proyectoId } = req.query;
   let query = `
     SELECT ep.EventoProyectoID, ep.Estado, ep.CreatedAt,
+           ep.HorarioID,
            p.Titulo AS TituloProyecto,
+           p.ProyectoID,
            e.Nombre AS NombreEvento,
-           u.Nombre AS NombreAlumno
+           e.Fecha  AS FechaEvento,
+           u.Nombre AS NombreAlumno,
+           a.Nombre AS NombreAula,
+           h.HoraInicio, h.HoraFin,
+           GROUP_CONCAT(ev_u.Nombre SEPARATOR ', ') AS Evaluadores
     FROM EventoProyectos ep
-    JOIN Proyectos p  ON ep.ProyectoID = p.ProyectoID
-    JOIN Eventos e    ON ep.EventoID   = e.EventoID
-    JOIN Usuarios u   ON p.AlumnoID    = u.UsuarioID
+    JOIN Proyectos p       ON ep.ProyectoID = p.ProyectoID
+    JOIN Eventos e         ON ep.EventoID   = e.EventoID
+    JOIN Usuarios u        ON p.AlumnoID    = u.UsuarioID
+    LEFT JOIN HorariosEvento h  ON ep.HorarioID  = h.HorarioID
+    LEFT JOIN Aulas a           ON h.AulaID       = a.AulaID
+    LEFT JOIN EvaluadoresEvento ee  ON ep.EventoProyectoID = ee.EventoProyectoID
+    LEFT JOIN Usuarios ev_u         ON ee.ProfesorID       = ev_u.UsuarioID
     WHERE 1=1
   `;
   const params = [];
-  if (eventoId) { query += " AND ep.EventoID = ?"; params.push(eventoId); }
-  if (estado)   { query += " AND ep.Estado = ?"; params.push(estado); }
-  query += " ORDER BY ep.CreatedAt DESC";
-
+  if (eventoId)   { query += " AND ep.EventoID   = ?"; params.push(eventoId); }
+  if (estado)     { query += " AND ep.Estado      = ?"; params.push(estado); }
+  if (proyectoId) { query += " AND ep.ProyectoID  = ?"; params.push(proyectoId); }
+  query += " GROUP BY ep.EventoProyectoID ORDER BY ep.CreatedAt DESC";
+ 
   db.query(query, params, (err, results) => {
     if (err) return res.status(500).json(err);
     res.json(results);
@@ -633,6 +677,66 @@ router.post("/eventos/proyectos/:id/evaluadores", (req, res) => {
       );
     }
   );
+});
+ 
+// ── POST /eventos/proyectos ─────────────────────────────────
+// El alumno inscribe su proyecto a un evento
+// Body: { EventoID, ProyectoID, Descripcion, Participantes[], Asesores[] }
+router.post("/eventos/proyectos", async (req, res) => {
+  const { EventoID, ProyectoID, Descripcion, Participantes, Asesores } = req.body;
+ 
+  if (!EventoID || !ProyectoID)
+    return res.status(400).json({ message: "EventoID y ProyectoID son obligatorios" });
+ 
+  try {
+    // Verificar que no esté ya inscrito en este evento
+    const [existente] = await dbPromise.query(
+      "SELECT EventoProyectoID FROM EventoProyectos WHERE EventoID = ? AND ProyectoID = ?",
+      [EventoID, ProyectoID]
+    );
+    if (existente.length > 0)
+      return res.status(409).json({ message: "Este proyecto ya está inscrito en el evento" });
+ 
+    // Insertar la inscripción
+    const [result] = await dbPromise.query(
+      `INSERT INTO EventoProyectos (EventoID, ProyectoID, Estado, QRCode)
+       VALUES (?, ?, 'pendiente', NULL)`,
+      [EventoID, ProyectoID]
+    );
+    const eventoProyectoId = result.insertId;
+ 
+    // Guardar descripción en el proyecto si viene
+    if (Descripcion) {
+      await dbPromise.query(
+        "UPDATE Proyectos SET Descripcion = ? WHERE ProyectoID = ?",
+        [Descripcion, ProyectoID]
+      );
+    }
+ 
+    // Guardar participantes en ProyectoParticipantes
+    if (Array.isArray(Participantes) && Participantes.length) {
+      // Limpiar participantes anteriores del proyecto
+      await dbPromise.query(
+        "DELETE FROM ProyectoParticipantes WHERE ProyectoID = ?",
+        [ProyectoID]
+      );
+      // Insertar nuevos
+      const valores = Participantes.map(p => [ProyectoID, p.id]);
+      await dbPromise.query(
+        "INSERT INTO ProyectoParticipantes (ProyectoID, UsuarioID) VALUES ?",
+        [valores]
+      );
+    }
+ 
+    res.status(201).json({
+      message: "Inscripción enviada. El administrador la revisará pronto.",
+      EventoProyectoID: eventoProyectoId
+    });
+ 
+  } catch (err) {
+    console.error(err);
+    res.status(500).json(err);
+  }
 });
 
 module.exports = router;

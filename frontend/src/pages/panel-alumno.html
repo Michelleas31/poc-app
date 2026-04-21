@@ -5,70 +5,288 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel Alumno — ProjectManager</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../styles/panel-admin.css">
-  <style>
-    .meta-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:24px; }
-    .meta-card { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
-    .meta-label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
-    .meta-value { font-size:14px; font-weight:500; color:var(--text); }
-    .section-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:20px; }
-    .section-card-title { font-family:'Syne',sans-serif; font-weight:700; font-size:16px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
-    .progress-bar-label { display:flex; justify-content:space-between; font-size:13px; color:var(--text-muted); margin-bottom:8px; }
-    .progress-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
-    .progress-bar-fill { height:100%; border-radius:4px; transition:width .6s cubic-bezier(.4,0,.2,1); }
-    .etapa-row { display:flex; align-items:center; gap:12px; padding:16px; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; transition:border-color .2s; cursor:pointer; }
-    .etapa-row:hover { border-color:var(--blue); }
-    .etapa-row.done { border-color:rgba(34,197,160,.3); background:rgba(34,197,160,.04); }
-    .etapa-checkbox { width:22px; height:22px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .2s; }
-    .etapa-row.done .etapa-checkbox { background:var(--green); border-color:var(--green); }
-    .etapa-row.done .etapa-nombre { text-decoration:line-through; color:var(--text-muted); }
-    .no-proyecto { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; text-align:center; gap:12px; }
-    .no-proyecto svg { width:56px; height:56px; opacity:.2; }
-    .no-proyecto h2 { font-family:'Syne',sans-serif; font-weight:700; font-size:20px; }
-    .no-proyecto p { font-size:14px; color:var(--text-muted); }
-    .celebracion { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:500; align-items:center; justify-content:center; }
-    .celebracion.show { display:flex; }
-    .celebracion-inner { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:40px; text-align:center; max-width:380px; animation:modalIn .3s ease; }
-    .celebracion-emoji { font-size:56px; margin-bottom:16px; }
-    .celebracion-title { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; margin-bottom:8px; }
-    .celebracion-sub { font-size:14px; color:var(--text-muted); margin-bottom:24px; }
-    @keyframes modalIn { from{opacity:0;transform:scale(.9)} to{opacity:1;transform:scale(1)} }
-  </style>
+  <link rel="stylesheet" href="../styles/panel-alumno.css">
 </head>
 <body>
+ 
+<!-- ── SIDEBAR ── -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg></div>
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        <path d="M14 17.5h7M17.5 14v7"/>
+      </svg>
+    </div>
     <span class="logo-name">ProjectManager</span>
     <span class="logo-badge">Alumno</span>
   </div>
+ 
   <nav class="sidebar-nav">
     <span class="nav-section-label">Mi proyecto</span>
-    <button class="nav-item active" onclick="showSection('mi-proyecto',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+    <button class="nav-item active" onclick="showSection('mi-proyecto', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+      </svg>
       Mi proyecto
     </button>
+ 
+    <span class="nav-section-label">Eventos</span>
+    <button class="nav-item" onclick="showSection('inscribir', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+        <path d="M12 14v4M10 16h4"/>
+      </svg>
+      Inscribir a evento
+    </button>
+    <button class="nav-item" onclick="showSection('mis-inscripciones', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+      Mis inscripciones
+      <span class="nav-badge" id="badge-inscripciones" style="display:none"></span>
+    </button>
   </nav>
+ 
   <div class="sidebar-user">
     <div class="avatar" id="nav-avatar">A</div>
-    <div class="user-info"><div class="user-name" id="nav-nombre">Alumno</div><div class="user-role">Alumno</div></div>
-    <button class="btn-logout" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    <div class="user-info">
+      <div class="user-name" id="nav-nombre">Alumno</div>
+      <div class="user-role">Alumno</div>
+    </div>
+    <button class="btn-logout" onclick="logout()" title="Cerrar sesión">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16,17 21,12 16,7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+    </button>
   </div>
 </aside>
-
+ 
+<!-- ── MAIN ── -->
 <main class="main">
   <div class="topbar">
-    <div><div class="page-title" id="page-title">Mi proyecto</div><div class="page-subtitle" id="page-subtitle">Progreso y etapas</div></div>
+    <div>
+      <div class="page-title" id="page-title">Mi proyecto</div>
+      <div class="page-subtitle" id="page-subtitle">Progreso y etapas</div>
+    </div>
   </div>
+ 
   <div class="content">
+ 
+    <!-- ═══════════ MI PROYECTO ═══════════ -->
     <div class="section active" id="section-mi-proyecto">
       <div id="proyecto-content">
         <div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando tu proyecto...</div>
       </div>
     </div>
-  </div>
-</main>
+ 
+    <!-- ═══════════ INSCRIBIR A EVENTO ═══════════ -->
+    <div class="section" id="section-inscribir">
+ 
+      <!-- Steps indicador -->
+      <div class="steps" id="steps-indicator">
+        <div class="step active" id="step-1">
+          <div class="step-num">1</div>
+          <span>Elegir evento</span>
+        </div>
+        <div class="step" id="step-2">
+          <div class="step-num">2</div>
+          <span>Participantes</span>
+        </div>
+        <div class="step" id="step-3">
+          <div class="step-num">3</div>
+          <span>Documento</span>
+        </div>
+        <div class="step" id="step-4">
+          <div class="step-num">4</div>
+          <span>Confirmar</span>
+        </div>
+      </div>
+ 
+      <!-- Paso 1: Elegir evento -->
+      <div id="paso-1">
+        <div class="section-card">
+          <div class="section-card-title">Eventos disponibles</div>
+          <div id="eventos-disponibles" class="eventos-grid">
+            <div style="color:var(--text-muted);font-size:13px">Cargando eventos...</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:16px">
+          <button class="btn btn-primary" onclick="irPaso(2)" id="btn-paso-2" disabled>
+            Siguiente — Participantes
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"/></svg>
+          </button>
+        </div>
+      </div>
+ 
+      <!-- Paso 2: Participantes y asesores -->
+      <div id="paso-2" style="display:none">
+        <div class="section-card">
+          <div class="section-card-title">
+            Participantes del proyecto
+            <button class="btn btn-ghost btn-sm" onclick="openModal('modal-agregar-participante')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Agregar participante
+            </button>
+          </div>
+          <div id="lista-participantes" style="display:flex;flex-direction:column;gap:8px">
+            <!-- se llena dinámicamente -->
+          </div>
+        </div>
+ 
+        <div class="section-card">
+          <div class="section-card-title">
+            Asesores
+            <button class="btn btn-ghost btn-sm" onclick="openModal('modal-agregar-asesor')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Agregar asesor
+            </button>
+          </div>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Opcional. Agrega los profesores que asesoraron tu proyecto.</p>
+          <div id="lista-asesores" style="display:flex;flex-direction:column;gap:8px">
+            <!-- se llena dinámicamente -->
+          </div>
+        </div>
+ 
+        <div style="display:flex;justify-content:space-between;margin-top:8px">
+          <button class="btn btn-ghost" onclick="irPaso(1)">← Atrás</button>
+          <button class="btn btn-primary" onclick="irPaso(3)">
+            Siguiente — Documento
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"/></svg>
+          </button>
+        </div>
+      </div>
+ 
+      <!-- Paso 3: Documento -->
+      <div id="paso-3" style="display:none">
+        <div class="section-card">
+          <div class="section-card-title">Información del proyecto</div>
 
+          <div class="form-group">
+            <label>Nombre del proyecto *</label>
+            <input
+              class="form-control"
+              id="inscripcion-titulo"
+              type="text"
+              maxlength="200"
+              placeholder="Ej. Sistema de gestión de proyectos escolares">
+          </div>
+
+          <div class="form-group">
+            <label>Descripción escrita *</label>
+            <textarea
+              class="form-control"
+              id="inscripcion-descripcion"
+              rows="5"
+              placeholder="Describe de qué trata tu proyecto, qué problema resuelve, tecnologías usadas, resultados obtenidos..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Documento PDF (opcional)</label>
+            <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+              <div class="upload-zone-icon">📄</div>
+              <div class="upload-zone-text">Arrastra tu PDF aquí o haz clic para seleccionar</div>
+              <div class="upload-zone-hint">Solo archivos .pdf · Máximo 10 MB</div>
+              <div class="upload-file-name" id="file-name-display" style="display:none"></div>
+            </div>
+            <input type="file" id="file-input" accept=".pdf" style="display:none">
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;margin-top:8px">
+          <button class="btn btn-ghost" onclick="irPaso(2)">← Atrás</button>
+          <button class="btn btn-primary" onclick="irPaso(4)">
+            Siguiente — Confirmar
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"/></svg>
+          </button>
+        </div>
+      </div>
+ 
+      <!-- Paso 4: Confirmar -->
+      <div id="paso-4" style="display:none">
+        <div class="section-card">
+          <div class="section-card-title">Resumen de inscripción</div>
+          <div id="resumen-inscripcion" style="display:flex;flex-direction:column;gap:14px">
+            <!-- se llena dinámicamente -->
+          </div>
+        </div>
+ 
+        <div style="background:rgba(245,132,42,.08);border:1px solid rgba(245,132,42,.25);border-radius:10px;padding:14px 18px;margin-top:4px;margin-bottom:20px;font-size:13px;color:var(--orange)">
+          ⚠ Una vez enviada, la inscripción quedará en estado <strong>pendiente</strong> hasta que el administrador la revise y apruebe o rechace.
+        </div>
+ 
+        <div style="display:flex;justify-content:space-between">
+          <button class="btn btn-ghost" onclick="irPaso(3)">← Atrás</button>
+          <button class="btn btn-success" onclick="confirmarInscripcion()" id="btn-confirmar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>
+            Enviar inscripción
+          </button>
+        </div>
+      </div>
+ 
+    </div><!-- /section-inscribir -->
+ 
+    <!-- ═══════════ MIS INSCRIPCIONES ═══════════ -->
+    <div class="section" id="section-mis-inscripciones">
+      <div id="inscripciones-content">
+        <div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando inscripciones...</div>
+      </div>
+    </div>
+ 
+  </div><!-- /content -->
+</main>
+ 
+<!-- ── MODALES ── -->
+ 
+<!-- Modal: Agregar participante -->
+<div class="modal-overlay" id="modal-agregar-participante">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-head">
+      <h3>Agregar participante</h3>
+      <button class="modal-close" onclick="closeModal('modal-agregar-participante')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Buscar alumno registrado</label>
+        <input class="form-control" id="buscar-participante" placeholder="Nombre o correo..." oninput="buscarAlumnos(this.value)">
+      </div>
+      <div id="resultados-participante" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-agregar-participante')">Cerrar</button>
+    </div>
+  </div>
+</div>
+ 
+<!-- Modal: Agregar asesor -->
+<div class="modal-overlay" id="modal-agregar-asesor">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-head">
+      <h3>Agregar asesor</h3>
+      <button class="modal-close" onclick="closeModal('modal-agregar-asesor')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Buscar profesor registrado</label>
+        <input class="form-control" id="buscar-asesor" placeholder="Nombre o correo..." oninput="buscarProfesores(this.value)">
+      </div>
+      <div id="resultados-asesor" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-agregar-asesor')">Cerrar</button>
+    </div>
+  </div>
+</div>
+ 
+<!-- Celebración al completar proyecto -->
 <div class="celebracion" id="celebracion">
   <div class="celebracion-inner">
     <div class="celebracion-emoji">🎉</div>
@@ -77,169 +295,13 @@
     <button class="btn btn-primary" onclick="document.getElementById('celebracion').classList.remove('show')">Continuar</button>
   </div>
 </div>
-
-<div class="toast" id="toast"><div class="toast-dot green" id="toast-dot"></div><span id="toast-msg"></span></div>
-
-<script>
-const API = 'http://localhost:3000/api';
-let user = null;
-let etapasActuales = [];
-
-document.addEventListener('DOMContentLoaded', () => {
-  const raw = sessionStorage.getItem('user');
-  if (!raw) return window.location.href = 'login.html';
-  user = JSON.parse(raw);
-  if (user.rol !== 'Alumno') return window.location.href = 'login.html';
-  document.getElementById('nav-nombre').textContent = user.nombre;
-  document.getElementById('nav-avatar').textContent = user.nombre[0].toUpperCase();
-  loadMiProyecto();
-});
-
-function logout() { sessionStorage.removeItem('user'); window.location.href = 'login.html'; }
-function showSection(id, el) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('section-' + id).classList.add('active');
-  if (el) el.classList.add('active');
-}
-
-async function loadMiProyecto() {
-  const container = document.getElementById('proyecto-content');
-  try {
-    const data      = await fetch(`${API}/proyectos/por-alumno/${user.id}`).then(r => r.json());
-    const proyectos = Array.isArray(data) ? data : [];
-    if (!proyectos.length) {
-      container.innerHTML = `
-        <div class="no-proyecto">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
-          <h2>Sin proyecto asignado</h2>
-          <p>Todavía no tienes un proyecto.<br>Contacta a tu profesor o administrador.</p>
-        </div>`;
-      return;
-    }
-    const p   = proyectos[0];
-    const pct = p.Progreso || 0;
-    const colores = { 'Pendiente':'badge-orange','En progreso':'badge-blue','Completado':'badge-green' };
-    const barFill  = pct === 100 ? 'var(--green)' : pct > 0 ? 'var(--blue)' : 'var(--border)';
-
-    document.getElementById('page-title').textContent    = p.Titulo;
-    document.getElementById('page-subtitle').textContent = p.Descripcion ? p.Descripcion.substring(0,80)+'…' : 'Sin descripción';
-
-    container.innerHTML = `
-      <div class="meta-grid">
-        <div class="meta-card"><div class="meta-label">Estado</div>
-          <div class="meta-value"><span class="badge ${colores[p.Estatus]||'badge-gray'}">${p.Estatus}</span></div></div>
-        <div class="meta-card"><div class="meta-label">Profesor</div>
-          <div class="meta-value">${p.NombreProfesor || '<span style="color:var(--text-muted)">Sin asignar</span>'}</div></div>
-        <div class="meta-card"><div class="meta-label">Fecha inicio</div>
-          <div class="meta-value">${p.FechaInicio ? new Date(p.FechaInicio+'T12:00:00').toLocaleDateString('es-MX') : '—'}</div></div>
-        <div class="meta-card"><div class="meta-label">Fecha fin</div>
-          <div class="meta-value">${p.FechaFin ? new Date(p.FechaFin+'T12:00:00').toLocaleDateString('es-MX') : 'Por definir'}</div></div>
-      </div>
-
-      <div class="section-card">
-        <div class="section-card-title">
-          <span>Progreso del proyecto</span>
-          <span id="pct-display" style="font-size:24px;font-weight:800;font-family:'Syne',sans-serif;color:${pct===100?'var(--green)':'var(--blue)'}">${pct}%</span>
-        </div>
-        <div class="progress-bar-label"><span>Completado</span><span id="etapas-label">Cargando...</span></div>
-        <div class="progress-bar" style="height:12px;border-radius:6px">
-          <div class="progress-bar-fill" id="main-bar" style="width:${pct}%;background:${barFill}"></div>
-        </div>
-      </div>
-
-      <div class="section-card">
-        <div class="section-card-title">
-          <span>Mis etapas</span>
-          <span style="font-size:12px;color:var(--text-muted);font-weight:400">Toca para marcar completada</span>
-        </div>
-        <div id="etapas-container" style="display:flex;flex-direction:column;gap:10px">
-          <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
-        </div>
-      </div>`;
-
-    await loadEtapas(p.ProyectoID);
-  } catch(e) {
-    container.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px">Error al cargar tu proyecto.</div>';
-  }
-}
-
-async function loadEtapas(proyectoId) {
-  const container = document.getElementById('etapas-container');
-  const label     = document.getElementById('etapas-label');
-  try {
-    const etapas    = await fetch(`${API}/proyectos/${proyectoId}/etapas`).then(r => r.json());
-    etapasActuales  = Array.isArray(etapas) ? etapas : [];
-    const comp      = etapasActuales.filter(e => e.Completada).length;
-    if (label) label.textContent = `${comp} de ${etapasActuales.length} etapas`;
-    if (!etapasActuales.length) {
-      if (container) container.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Tu profesor aún no ha definido etapas.</div>';
-      return;
-    }
-    renderEtapas(proyectoId);
-  } catch(e) {
-    if (container) container.innerHTML = '<div style="color:var(--red);font-size:13px">Error al cargar etapas</div>';
-  }
-}
-
-function renderEtapas(proyectoId) {
-  const container = document.getElementById('etapas-container');
-  if (!container) return;
-  container.innerHTML = etapasActuales.map((e, i) => `
-    <div class="etapa-row ${e.Completada ? 'done' : ''}" onclick="toggleEtapa(${e.EtapaID}, ${!e.Completada}, ${proyectoId||0})" id="row-${e.EtapaID}">
-      <div class="etapa-checkbox">
-        ${e.Completada ? '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="20,6 9,17 4,12"/></svg>' : ''}
-      </div>
-      <div style="flex:1;min-width:0">
-        <div class="etapa-nombre" style="font-size:14px;font-weight:500">${e.Nombre}</div>
-        ${e.Descripcion ? `<div style="font-size:12px;color:var(--text-muted);margin-top:3px">${e.Descripcion}</div>` : ''}
-        ${e.FechaFin    ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px">📅 Límite: ${new Date(e.FechaFin+'T12:00:00').toLocaleDateString('es-MX')}</div>` : ''}
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-        <span class="badge ${e.Completada ? 'badge-green' : 'badge-gray'}">${e.Completada ? '✓ Completada' : 'Pendiente'}</span>
-        <span style="font-size:11px;color:var(--text-muted)">${i+1}/${etapasActuales.length}</span>
-      </div>
-    </div>`).join('');
-}
-
-async function toggleEtapa(etapaId, completada, proyectoId) {
-  const etapa = etapasActuales.find(e => e.EtapaID === etapaId);
-  if (!etapa) return;
-  etapa.Completada = completada;           // optimistic update
-  renderEtapas(proyectoId);
-  try {
-    const res  = await fetch(`${API}/etapas/${etapaId}`, {
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ Completada: completada })
-    });
-    const data = await res.json();
-    const pct  = data.progreso ?? 0;
-
-    const bar  = document.getElementById('main-bar');
-    const disp = document.getElementById('pct-display');
-    const lbl  = document.getElementById('etapas-label');
-    const comp = etapasActuales.filter(e => e.Completada).length;
-
-    if (bar)  { bar.style.width = `${pct}%`; bar.style.background = pct===100?'var(--green)':pct>0?'var(--blue)':'var(--border)'; }
-    if (disp) { disp.textContent = `${pct}%`; disp.style.color = pct===100?'var(--green)':'var(--blue)'; }
-    if (lbl)  { lbl.textContent  = `${comp} de ${etapasActuales.length} etapas`; }
-
-    toast(completada ? '✓ Etapa completada' : 'Marcada como pendiente');
-    if (pct === 100) setTimeout(() => document.getElementById('celebracion').classList.add('show'), 600);
-
-  } catch(err) {
-    etapa.Completada = !completada;        // revertir
-    renderEtapas(proyectoId);
-    toast('Error al actualizar', 'red');
-  }
-}
-
-function toast(msg, type='green') {
-  const t = document.getElementById('toast');
-  document.getElementById('toast-msg').textContent = msg;
-  document.getElementById('toast-dot').className   = `toast-dot ${type}`;
-  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000);
-}
-</script>
+ 
+<!-- Toast -->
+<div class="toast" id="toast">
+  <div class="toast-dot green" id="toast-dot"></div>
+  <span id="toast-msg"></span>
+</div>
+ 
 </body>
+<script src="../panel-alumno.js"></script>
 </html>
