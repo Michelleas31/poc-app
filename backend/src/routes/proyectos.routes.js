@@ -1,15 +1,59 @@
+// ✅ CORREGIDO v1.1 — 2026-04-26
+// Cambios: #4 rutas estáticas /revision/pendientes y /revision/profesor/:id
+//          registradas ANTES de la ruta paramétrica /:id para evitar que
+//          Express interprete "revision" como un ProyectoID.
 const express = require("express");
 const router  = express.Router();
 const db      = require("../services/database");
 
 // ══════════════════════════════════════════
+// REVISIÓN — rutas estáticas ANTES de /:id
+// ══════════════════════════════════════════
+
+// GET /proyectos/revision/pendientes — todos los proyectos pendientes de revisión (Admin)
+router.get("/proyectos/revision/pendientes", (req, res) => {
+  db.query(
+    `SELECT p.*,
+            a.Nombre  AS NombreAlumno,  a.Email  AS EmailAlumno,
+            pr.Nombre AS NombreProfesor
+     FROM Proyectos p
+     LEFT JOIN Usuarios a  ON p.AlumnoID   = a.UsuarioID
+     LEFT JOIN Usuarios pr ON p.ProfesorID = pr.UsuarioID
+     WHERE p.Activo = 1 AND (p.EstadoAprobacion = 'pendiente' OR p.EstadoAprobacion IS NULL)
+     ORDER BY p.CreatedAt DESC`,
+    (err, results) => {
+      if (err) return res.status(500).json(err);
+      res.json(results);
+    }
+  );
+});
+
+// GET /proyectos/revision/profesor/:id — proyectos asignados a un profesor pendientes de revisión
+router.get("/proyectos/revision/profesor/:id", (req, res) => {
+  db.query(
+    `SELECT p.*,
+            a.Nombre  AS NombreAlumno,  a.Email  AS EmailAlumno
+     FROM Proyectos p
+     LEFT JOIN Usuarios a ON p.AlumnoID = a.UsuarioID
+     WHERE p.ProfesorID = ? AND p.Activo = 1
+     ORDER BY p.CreatedAt DESC`,
+    [req.params.id],
+    (err, results) => {
+      if (err) return res.status(500).json(err);
+      res.json(results);
+    }
+  );
+});
+
+// ══════════════════════════════════════════
 // PROYECTOS — CRUD GENERAL
+// (rutas estáticas multi-segmento van ANTES de /:id)
 // ══════════════════════════════════════════
 
 router.get("/proyectos", (req, res) => {
   db.query(
     `SELECT p.*,
-            a.Nombre AS NombreAlumno,
+            a.Nombre  AS NombreAlumno,
             pr.Nombre AS NombreProfesor
      FROM Proyectos p
      LEFT JOIN Usuarios a  ON p.AlumnoID   = a.UsuarioID
@@ -26,7 +70,7 @@ router.get("/proyectos", (req, res) => {
 router.get("/proyectos/por-profesor/:id", (req, res) => {
   db.query(
     `SELECT p.*,
-            a.Nombre AS NombreAlumno,
+            a.Nombre  AS NombreAlumno,
             pr.Nombre AS NombreProfesor,
             (SELECT COUNT(*) FROM EtapasProyecto e WHERE e.ProyectoID = p.ProyectoID) AS TotalEtapas,
             (SELECT COUNT(*) FROM EtapasProyecto e WHERE e.ProyectoID = p.ProyectoID AND e.Completada = 1) AS EtapasCompletadas
@@ -46,7 +90,7 @@ router.get("/proyectos/por-profesor/:id", (req, res) => {
 router.get("/proyectos/por-alumno/:id", (req, res) => {
   db.query(
     `SELECT p.*,
-            a.Nombre AS NombreAlumno,
+            a.Nombre  AS NombreAlumno,
             pr.Nombre AS NombreProfesor,
             (SELECT COUNT(*) FROM EtapasProyecto e WHERE e.ProyectoID = p.ProyectoID) AS TotalEtapas,
             (SELECT COUNT(*) FROM EtapasProyecto e WHERE e.ProyectoID = p.ProyectoID AND e.Completada = 1) AS EtapasCompletadas
@@ -63,10 +107,11 @@ router.get("/proyectos/por-alumno/:id", (req, res) => {
   );
 });
 
+// /:id va AL FINAL de las rutas de dos segmentos
 router.get("/proyectos/:id", (req, res) => {
   db.query(
     `SELECT p.*,
-            a.Nombre AS NombreAlumno,  a.Email AS EmailAlumno,
+            a.Nombre  AS NombreAlumno,  a.Email AS EmailAlumno,
             pr.Nombre AS NombreProfesor, pr.Email AS EmailProfesor
      FROM Proyectos p
      LEFT JOIN Usuarios a  ON p.AlumnoID   = a.UsuarioID
@@ -113,6 +158,7 @@ router.put("/proyectos/:id", (req, res) => {
   });
 });
 
+// PUT /proyectos/:id/asignar-profesor — debe ir ANTES del DELETE /:id
 router.put("/proyectos/:id/asignar-profesor", (req, res) => {
   const { ProfesorID } = req.body;
   db.query(

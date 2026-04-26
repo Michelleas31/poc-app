@@ -249,14 +249,17 @@ CREATE TABLE IF NOT EXISTS `eventoproyectos` (
   `EventoProyectoID` int(11) NOT NULL AUTO_INCREMENT,
   `EventoID` int(11) NOT NULL,
   `ProyectoID` int(11) NOT NULL,
+  `HorarioID` int(11) DEFAULT NULL,
   `Estado` enum('pendiente','aceptado','rechazado') DEFAULT 'pendiente',
   `QRCode` varchar(255) DEFAULT NULL,
   `CreatedAt` datetime DEFAULT current_timestamp(),
   PRIMARY KEY (`EventoProyectoID`),
   KEY `EventoID` (`EventoID`),
   KEY `ProyectoID` (`ProyectoID`),
+  KEY `HorarioID` (`HorarioID`),
   CONSTRAINT `eventoproyectos_ibfk_1` FOREIGN KEY (`EventoID`) REFERENCES `eventos` (`EventoID`),
-  CONSTRAINT `eventoproyectos_ibfk_2` FOREIGN KEY (`ProyectoID`) REFERENCES `proyectos` (`ProyectoID`)
+  CONSTRAINT `eventoproyectos_ibfk_2` FOREIGN KEY (`ProyectoID`) REFERENCES `proyectos` (`ProyectoID`),
+  CONSTRAINT `eventoproyectos_ibfk_3` FOREIGN KEY (`HorarioID`) REFERENCES `horariosevento` (`HorarioID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 -- Volcando datos para la tabla sistematesis.eventoproyectos: ~0 rows (aproximadamente)
@@ -396,6 +399,9 @@ CREATE TABLE IF NOT EXISTS `proyectos` (
   `AlumnoID` int(11) NOT NULL,
   `ProfesorID` int(11) DEFAULT NULL,
   `Progreso` int(11) NOT NULL DEFAULT 0,
+  `EstadoAprobacion` enum('pendiente','aceptado','rechazado') NOT NULL DEFAULT 'pendiente',
+  `ComentarioRevision` text DEFAULT NULL,
+  `FechaRevision` datetime DEFAULT NULL,
   `CreatedAt` datetime NOT NULL DEFAULT current_timestamp(),
   `UpdatedAt` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `Activo` tinyint(1) NOT NULL DEFAULT 1,

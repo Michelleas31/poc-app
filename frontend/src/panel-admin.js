@@ -1,14 +1,17 @@
 const API = 'http://localhost:3000/api';
- 
+
+let user = null;
+
 // ── NAVEGACIÓN ────────────────────────────────────────────────
 const pageTitles = {
-  dashboard:   ['Dashboard', 'Resumen general del sistema'],
-  usuarios:    ['Usuarios', 'Gestión de alumnos, profesores y admins'],
-  eventos:     ['Gestionar Eventos', 'Crea, edita y administra los eventos'],
-  horarios:    ['Horarios y Aulas', 'Configura espacios y tiempos del evento'],
-  rubricas:    ['Rúbricas', 'Criterios de evaluación por evento'],
-  proyectos:   ['Aprobar Proyectos', 'Acepta o rechaza inscripciones'],
-  evaluadores: ['Asignar Evaluadores', 'Designa profesores por proyecto'],
+  dashboard:          ['Dashboard', 'Resumen general del sistema'],
+  usuarios:           ['Usuarios', 'Gestión de alumnos, profesores y admins'],
+  eventos:            ['Gestionar Eventos', 'Crea, edita y administra los eventos'],
+  horarios:           ['Horarios y Aulas', 'Configura espacios y tiempos del evento'],
+  rubricas:           ['Rúbricas', 'Criterios de evaluación por evento'],
+  proyectos:          ['Aprobar Proyectos', 'Acepta o rechaza inscripciones'],
+  evaluadores:        ['Asignar Evaluadores', 'Designa profesores por proyecto'],
+  'gestion-proyectos':['Gestión de Proyectos', 'Crea, edita y asigna proyectos a alumnos'],
 };
  
 function showSection(id, el) {
@@ -23,13 +26,14 @@ function showSection(id, el) {
 }
  
 function loadSection(id) {
-  if (id === 'dashboard')   loadDashboard();
-  if (id === 'usuarios')    loadUsuarios();
-  if (id === 'eventos')     loadEventos();
-  if (id === 'horarios')    { loadEventosSelect(); loadAulas(); }
-  if (id === 'rubricas')    loadRubricas();
-  if (id === 'proyectos')   { loadEventosSelect2(); loadProyectosEvento(); }
-  if (id === 'evaluadores') { loadEventosSelectEval(); }
+  if (id === 'dashboard')          loadDashboard();
+  if (id === 'usuarios')           loadUsuarios();
+  if (id === 'eventos')            loadEventos();
+  if (id === 'horarios')           { loadEventosSelect(); loadAulas(); }
+  if (id === 'rubricas')           loadRubricas();
+  if (id === 'proyectos')          { loadEventosSelect2(); loadProyectosEvento(); }
+  if (id === 'evaluadores')        { loadEventosSelectEval(); }
+  if (id === 'gestion-proyectos')  loadGestionProyectos();
 }
  
 // ── TABS ──────────────────────────────────────────────────────
@@ -46,6 +50,11 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
  
 document.addEventListener('DOMContentLoaded', () => {
+  const raw = sessionStorage.getItem('user');
+  if (!raw) return window.location.href = 'login.html';
+  user = JSON.parse(raw);
+  if (user.rol !== 'Admin') return window.location.href = 'login.html';
+
   document.querySelectorAll('.modal-overlay').forEach(o => {
     o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
   });
@@ -630,6 +639,7 @@ async function saveRubrica() {
   const body = {
     Nombre: document.getElementById('rub-nombre').value.trim(),
     Descripcion: document.getElementById('rub-desc').value.trim(),
+    ProfesorID: user ? user.id : 1,
     criterios: criterios.map((criterio, criterioIndex) => ({
       nombre: (criterio.nombre || '').trim(),
       descripcion: (criterio.descripcion || '').trim(),
@@ -861,18 +871,9 @@ async function saveEvaluadores() {
   } catch (e) { toast('Error', 'red'); }
 }
 
-// ── GESTIÓN DE PROYECTOS ────────YAHIR──────────────────────────────
+// ── GESTIÓN DE PROYECTOS ──────────────────────────────────────────
 
 let allProyectos = [];
-
-(function() {
-  pageTitles['gestion-proyectos'] = ['Gestión de Proyectos', 'Crea, edita y asigna proyectos a alumnos'];
-  const origLoad = loadSection;
-  loadSection = function(id) {
-    if (id === 'gestion-proyectos') loadGestionProyectos();
-    else origLoad(id);
-  };
-})();
 
 async function loadGestionProyectos() {
   document.getElementById('gp-tbody').innerHTML =
@@ -945,6 +946,7 @@ function renderGPList(list) {
       </td>
       <td><span class="badge ${colors[p.Estatus] || 'badge-gray'}">${p.Estatus}</span></td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="verDetallesProyecto(${p.ProyectoID})">Ver</button>
         <button class="btn btn-ghost btn-sm" onclick="editProyecto(${JSON.stringify(p).replace(/"/g,'&quot;')})">Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="openEtapas(${p.ProyectoID},'${p.Titulo.replace(/'/g,"\\'")}')">Etapas</button>
         <button class="btn btn-danger btn-sm" onclick="deleteProyecto(${p.ProyectoID},'${p.Titulo.replace(/'/g,"\\'")}')">Eliminar</button>
@@ -1107,3 +1109,194 @@ async function deleteEtapa(etapaId, proyectoId) {
     loadGestionProyectos();
   } catch(e) { toast('Error', 'red'); }
 }
+
+
+// ── VER DETALLES DEL PROYECTO (admin) ────────────────────────────
+
+async function verDetallesProyecto(proyectoId) {
+  window.adminProyectoIdActual = proyectoId;
+  const body = document.getElementById('det-modal-body');
+  body.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando...</div>';
+  openModal('modal-detalles-proy');
+
+  try {
+    const data = await fetch(`${API}/proyectos/${proyectoId}/detalles`).then(r => r.json());
+    const p    = data.proyecto;
+    const docs = data.documentos || [];
+    const etps = data.etapas     || [];
+
+    document.getElementById('det-modal-title').textContent = `Detalles — ${p.Titulo}`;
+
+    const aprobBadge = {
+      aceptado:   '<span class="badge badge-green">Aceptado por profesor</span>',
+      rechazado:  '<span class="badge badge-red">Rechazado por profesor</span>',
+      pendiente:  '<span class="badge badge-orange">Pendiente de revisión</span>',
+    }[p.EstadoAprobacion || 'pendiente'];
+
+    const estatusBadge = {
+      'Pendiente':   '<span class="badge badge-orange">Pendiente</span>',
+      'En progreso': '<span class="badge badge-blue">En progreso</span>',
+      'Completado':  '<span class="badge badge-green">Completado</span>',
+    }[p.Estatus] || `<span class="badge badge-gray">${p.Estatus}</span>`;
+
+    body.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        ${estatusBadge} ${aprobBadge}
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:20px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Alumno</div>
+          <div style="font-size:14px;font-weight:500">${p.NombreAlumno || '—'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${p.EmailAlumno || ''}</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Profesor</div>
+          <div style="font-size:14px;font-weight:500">${p.NombreProfesor || '<span style="color:var(--text-muted)">Sin asignar</span>'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${p.EmailProfesor || ''}</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Fecha inicio</div>
+          <div style="font-size:14px;font-weight:500">${p.FechaInicio ? new Date(p.FechaInicio).toLocaleDateString('es-MX') : '—'}</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Progreso</div>
+          <div style="font-size:14px;font-weight:500">${p.Progreso || 0}%</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Descripción</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;line-height:1.6;color:var(--text)">
+          ${p.Descripcion ? p.Descripcion.replace(/\n/g, '<br>') : '<span style="color:var(--text-muted)">Sin descripción</span>'}
+        </div>
+      </div>
+
+      ${p.ComentarioRevision ? `
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Comentario del profesor</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:14px;font-size:13px;line-height:1.6">
+          ${p.ComentarioRevision.replace(/\n/g, '<br>')}
+          ${p.FechaRevision ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px">📅 ${new Date(p.FechaRevision).toLocaleString('es-MX')}</div>` : ''}
+        </div>
+      </div>` : ''}
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+          Documentos adjuntos (${docs.length})
+        </div>
+        ${docs.length === 0
+          ? '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text-muted)">El alumno aún no ha subido documentos.</div>'
+          : docs.map(d => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:6px">
+              <div style="width:32px;height:32px;border-radius:6px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.NombreArchivo}</div>
+                <div style="font-size:11px;color:var(--text-muted)">
+                  ${formatBytes(d.TamanoBytes)} · ${new Date(d.CreatedAt).toLocaleDateString('es-MX')}
+                  ${d.Descripcion ? ' · ' + d.Descripcion : ''}
+                </div>
+              </div>
+              <a href="${API}/documentos/${d.DocumentoID}/ver" target="_blank" class="btn btn-ghost btn-sm">Ver</a>
+              <a href="${API}/documentos/${d.DocumentoID}/descargar" class="btn btn-primary btn-sm">Descargar</a>
+            </div>`).join('')
+        }
+      </div>
+
+      <div>
+        <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+          Etapas (${etps.filter(e=>e.Completada).length}/${etps.length})
+        </div>
+        ${etps.length === 0
+          ? '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text-muted)">Sin etapas definidas.</div>'
+          : etps.map(e => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:6px">
+              <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;${e.Completada ? 'background:var(--green);border-color:var(--green)' : ''}">
+                ${e.Completada ? '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" style="width:10px;height:10px"><polyline points="20,6 9,17 4,12"/></svg>' : ''}
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:500;${e.Completada ? 'color:var(--text-muted);text-decoration:line-through' : ''}">${e.Nombre}</div>
+                ${e.Descripcion ? `<div style="font-size:11px;color:var(--text-muted)">${e.Descripcion}</div>` : ''}
+              </div>
+              <span class="badge ${e.Completada ? 'badge-green' : 'badge-gray'}">${e.Completada ? 'Completada' : 'Pendiente'}</span>
+            </div>`).join('')
+        }
+      </div>`;
+    const foot = document.getElementById('det-modal-foot');
+    if (foot && !foot.querySelector('.admin-upload-btn')) {
+      const btn = document.createElement('button');
+      btn.className   = 'btn btn-ghost btn-sm admin-upload-btn';
+      btn.textContent = '📄 Subir análisis';
+      btn.style.marginRight = 'auto';
+      btn.onclick = abrirSubirDocAdmin;
+      foot.insertBefore(btn, foot.firstChild);
+    }
+  } catch(e) {
+    body.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px">Error al cargar los detalles</div>';
+  }
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const k = 1024, sizes = ['B','KB','MB','GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+}
+
+// Modal para subir documentos como admin
+function abrirSubirDocAdmin()  { document.getElementById('modal-subir-doc-admin').classList.add('open'); }
+function cerrarSubirDocAdmin() {
+  document.getElementById('modal-subir-doc-admin').classList.remove('open');
+  document.getElementById('doc-file-admin').value = '';
+  document.getElementById('doc-desc-admin').value = '';
+}
+ 
+async function subirDocumentoAdmin() {
+  const file = document.getElementById('doc-file-admin').files[0];
+  const desc = document.getElementById('doc-desc-admin').value.trim();
+  const proyectoId = window.adminProyectoIdActual;
+ 
+  if (!file)  return toast('Selecciona un archivo', 'red');
+  if (file.size > 25 * 1024 * 1024) return toast('El archivo excede 25 MB', 'red');
+  if (!proyectoId) return toast('No hay proyecto activo', 'red');
+ 
+  const btn = document.getElementById('btn-subir-doc-admin');
+  btn.disabled = true;
+  btn.textContent = 'Subiendo...';
+ 
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload  = () => resolve(r.result.split(',')[1]);
+      r.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      r.readAsDataURL(file);
+    });
+ 
+    const res = await fetch(`${API}/proyectos/${proyectoId}/documentos`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        NombreArchivo:   file.name,
+        MimeType:        file.type || 'application/octet-stream',
+        ContenidoBase64: base64,
+        Descripcion:     desc || 'Documento de análisis (Admin)',
+        SubidoPorID:     user.id
+      })
+    });
+    if (!res.ok) throw new Error('Fallo al subir');
+    toast('✓ Documento subido');
+    cerrarSubirDocAdmin();
+    // Recargar detalles
+    if (window.adminProyectoIdActual) {
+      verDetallesProyecto(window.adminProyectoIdActual);
+    }
+  } catch(e) {
+    toast('Error al subir el documento', 'red');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Subir documento';
+  }
+}
+ 

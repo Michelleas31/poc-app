@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="../styles/panel-admin.css">
 </head>
 <body>
- 
+
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">
@@ -44,24 +44,22 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       Rubricas
     </button>
-
     <span class="nav-section-label">Proyectos</span>
     <button class="nav-item" onclick="showSection('gestion-proyectos',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
-    </svg>
-   Gestión de Proyectos
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+      </svg>
+      Gestión de Proyectos
     </button>
     <button class="nav-item" onclick="showSection('proyectos',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
       Aprobar Proyectos
       <span class="nav-badge" id="badge-proyectos"></span>
-      </button>
-     <button class="nav-item" onclick="showSection('evaluadores',this)">
+    </button>
+    <button class="nav-item" onclick="showSection('evaluadores',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-     Asignar Evaluadores
-      </button>
-
+      Asignar Evaluadores
+    </button>
   </nav>
   <div class="sidebar-user">
     <div class="avatar">A</div>
@@ -74,7 +72,7 @@
     </button>
   </div>
 </aside>
- 
+
 <main class="main">
   <div class="topbar">
     <div>
@@ -84,7 +82,8 @@
     <div class="topbar-actions" id="topbar-actions"></div>
   </div>
   <div class="content">
- 
+
+    <!-- DASHBOARD -->
     <div class="section active" id="section-dashboard">
       <div class="stats-grid">
         <div class="stat-card" style="--card-color:var(--blue)"><div class="stat-label">Usuarios activos</div><div class="stat-value" id="stat-usuarios">0</div><div class="stat-sub">Alumnos y profesores</div></div>
@@ -98,7 +97,8 @@
         <tbody id="dash-proyectos-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table>
       </div>
     </div>
- 
+
+    <!-- USUARIOS -->
     <div class="section" id="section-usuarios">
       <div class="table-wrap">
         <div class="table-header"><span class="table-title">Usuarios del sistema</span>
@@ -114,14 +114,16 @@
         <tbody id="usuarios-tbody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table>
       </div>
     </div>
- 
+
+    <!-- EVENTOS -->
     <div class="section" id="section-eventos">
       <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
         <button class="btn btn-primary" onclick="openModal('modal-evento')">+ Nuevo evento</button>
       </div>
       <div class="events-grid" id="eventos-grid"><div style="color:var(--text-muted);font-size:13px">Cargando eventos...</div></div>
     </div>
- 
+
+    <!-- HORARIOS -->
     <div class="section" id="section-horarios">
       <div class="tabs">
         <button class="tab active" onclick="switchTab(this,'tab-horarios')">Horarios</button>
@@ -146,7 +148,8 @@
         <tbody id="aulas-tbody"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table></div>
       </div>
     </div>
- 
+
+    <!-- RUBRICAS -->
     <div class="section" id="section-rubricas">
       <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
         <button class="btn btn-primary" onclick="openModalRubrica()">+ Nueva rubrica</button>
@@ -154,7 +157,8 @@
       <div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Creada por</th><th>Criterios</th><th>Estado</th><th>Acciones</th></tr></thead>
       <tbody id="rubricas-tbody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table></div>
     </div>
- 
+
+    <!-- APROBAR PROYECTOS (eventos) -->
     <div class="section" id="section-proyectos">
       <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center">
         <label style="font-size:12px;color:var(--text-muted)">Evento:</label>
@@ -166,36 +170,39 @@
       <div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Lider</th><th>Evento</th><th>Inscrito</th><th>Estado</th><th>Acciones</th></tr></thead>
       <tbody id="proyectos-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table></div>
     </div>
- 
-<div class="section" id="section-gestion-proyectos">
-  <div id="gp-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px"></div>
-  <div class="table-wrap">
-    <div class="table-header">
-      <span class="table-title">Proyectos</span>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div class="search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input class="search-input" placeholder="Buscar proyecto..." oninput="filterGP(this.value)">
+
+    <!-- GESTIÓN DE PROYECTOS -->
+    <!-- #EXTRA21 corregido: botón "Ver" añadido en panel-admin.js > renderGPList() -->
+    <div class="section" id="section-gestion-proyectos">
+      <div id="gp-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px"></div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title">Proyectos</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input class="search-input" placeholder="Buscar proyecto..." oninput="filterGP(this.value)">
+            </div>
+            <select class="form-control" style="width:auto" id="gp-filter-estatus" onchange="renderGP()">
+              <option value="">Todos</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En progreso">En progreso</option>
+              <option value="Completado">Completado</option>
+            </select>
+            <button class="btn btn-primary" onclick="openModalNuevoProyecto()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuevo proyecto
+            </button>
+          </div>
         </div>
-        <select class="form-control" style="width:auto" id="gp-filter-estatus" onchange="renderGP()">
-          <option value="">Todos</option>
-          <option value="Pendiente">Pendiente</option>
-          <option value="En progreso">En progreso</option>
-          <option value="Completado">Completado</option>
-        </select>
-        <button class="btn btn-primary" onclick="openModalNuevoProyecto()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nuevo proyecto
-        </button>
+        <table>
+          <thead><tr><th>Título</th><th>Alumno</th><th>Profesor</th><th>Progreso</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="gp-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody>
+        </table>
       </div>
     </div>
-    <table>
-      <thead><tr><th>Título</th><th>Alumno</th><th>Profesor</th><th>Progreso</th><th>Estado</th><th>Acciones</th></tr></thead>
-      <tbody id="gp-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody>
-    </table>
-  </div>
-</div>
-    
+
+    <!-- ASIGNAR EVALUADORES -->
     <div class="section" id="section-evaluadores">
       <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center">
         <label style="font-size:12px;color:var(--text-muted)">Evento:</label>
@@ -204,10 +211,10 @@
       <div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Aula / Horario</th><th>Evaluadores asignados</th><th>Accion</th></tr></thead>
       <tbody id="evaluadores-tbody"><tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Selecciona un evento</td></tr></tbody></table></div>
     </div>
- 
+
   </div>
 </main>
- 
+
 <!-- MODALES -->
 <div class="modal-overlay" id="modal-usuario">
   <div class="modal">
@@ -224,7 +231,7 @@
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-usuario')">Cancelar</button><button class="btn btn-primary" onclick="saveUsuario()">Guardar</button></div>
   </div>
 </div>
- 
+
 <div class="modal-overlay" id="modal-evento">
   <div class="modal">
     <div class="modal-head"><h3 id="modal-evento-title">Nuevo evento</h3><button class="modal-close" onclick="closeModal('modal-evento')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -244,7 +251,7 @@
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-evento')">Cancelar</button><button class="btn btn-primary" onclick="saveEvento()">Guardar</button></div>
   </div>
 </div>
- 
+
 <div class="modal-overlay" id="modal-aula">
   <div class="modal" style="max-width:380px">
     <div class="modal-head"><h3>Nueva aula</h3><button class="modal-close" onclick="closeModal('modal-aula')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -255,7 +262,7 @@
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-aula')">Cancelar</button><button class="btn btn-primary" onclick="saveAula()">Guardar</button></div>
   </div>
 </div>
- 
+
 <div class="modal-overlay" id="modal-horario">
   <div class="modal" style="max-width:420px">
     <div class="modal-head"><h3>Agregar horario</h3><button class="modal-close" onclick="closeModal('modal-horario')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
@@ -269,14 +276,13 @@
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-horario')">Cancelar</button><button class="btn btn-primary" onclick="saveHorario()">Guardar</button></div>
   </div>
 </div>
- 
+
 <div class="modal-overlay" id="modal-rubrica">
   <div class="modal" style="max-width:1100px;width:min(1100px,96vw)">
     <div class="modal-head"><h3>Nueva rubrica</h3><button class="modal-close" onclick="closeModal('modal-rubrica')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
       <div class="form-group"><label>Nombre de la rubrica</label><input class="form-control" id="rub-nombre" placeholder="Ej. Rubrica Feria de Proyectos"></div>
       <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="rub-desc" rows="2" style="resize:vertical" placeholder="Descripcion opcional..."></textarea></div>
-
       <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:18px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
           <div>
@@ -285,40 +291,35 @@
           </div>
           <button class="btn btn-ghost btn-sm" onclick="addCriterio()">+ Agregar criterio</button>
         </div>
-
         <div style="display:grid;grid-template-columns:minmax(280px,320px) minmax(0,1fr);gap:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px">
           <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)">Configuracion del criterio</div>
           <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)">Niveles de desempeño</div>
         </div>
-
         <div id="criterios-list" style="display:flex;flex-direction:column;gap:14px"></div>
       </div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-rubrica')">Cancelar</button><button class="btn btn-primary" onclick="saveRubrica()">Guardar</button></div>
   </div>
 </div>
- 
+
 <div class="modal-overlay" id="modal-evaluadores">
   <div class="modal">
     <div class="modal-head"><h3 id="modal-eval-title">Asignar evaluadores</h3><button class="modal-close" onclick="closeModal('modal-evaluadores')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
       <input type="hidden" id="eval-ep-id">
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Selecciona hasta 3 profesores evaluadores. El sistema recomienda segun especialidad.</p>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Selecciona hasta 3 profesores evaluadores.</p>
       <div id="profesores-eval-list" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto"></div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-evaluadores')">Cancelar</button><button class="btn btn-primary" onclick="saveEvaluadores()">Guardar asignacion</button></div>
   </div>
 </div>
- 
 
 <!-- MODAL PROYECTO -->
 <div class="modal-overlay" id="modal-proyecto">
   <div class="modal" style="max-width:560px">
     <div class="modal-head">
       <h3 id="modal-proyecto-title">Nuevo proyecto</h3>
-      <button class="modal-close" onclick="closeModal('modal-proyecto')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      <button class="modal-close" onclick="closeModal('modal-proyecto')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="proy-id">
@@ -345,9 +346,7 @@
   <div class="modal" style="max-width:600px">
     <div class="modal-head">
       <h3 id="modal-etapas-title">Etapas del proyecto</h3>
-      <button class="modal-close" onclick="closeModal('modal-etapas')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      <button class="modal-close" onclick="closeModal('modal-etapas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="etapas-proy-id">
@@ -366,11 +365,57 @@
   </div>
 </div>
 
+<!-- MODAL VER DETALLES DEL PROYECTO -->
+<div class="modal-overlay" id="modal-detalles-proy">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-head">
+      <h3 id="det-modal-title">Detalles del proyecto</h3>
+      <button class="modal-close" onclick="closeModal('modal-detalles-proy')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body" id="det-modal-body">
+      <div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando...</div>
+    </div>
+    <div class="modal-foot" id="det-modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-detalles-proy')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUBIR DOC ADMIN -->
+<div class="modal-overlay" id="modal-subir-doc-admin">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <h3>Subir documento de análisis</h3>
+      <button class="modal-close" onclick="cerrarSubirDocAdmin()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
+        Como administrador, puedes subir documentos de análisis para complementar la revisión.
+        Estos documentos serán visibles para el profesor y el alumno.
+      </p>
+      <div class="form-group">
+        <label>Archivo *</label>
+        <input type="file" id="doc-file-admin" class="form-control"
+               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.txt,.zip">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Tamaño máximo: 25 MB</div>
+      </div>
+      <div class="form-group">
+        <label>Descripción</label>
+        <input type="text" id="doc-desc-admin" class="form-control" placeholder="Describe el contenido del documento">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="cerrarSubirDocAdmin()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-subir-doc-admin" onclick="subirDocumentoAdmin()">Subir documento</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">
   <div class="toast-dot green" id="toast-dot"></div>
   <span id="toast-msg"></span>
 </div>
- 
+
 <script src="../panel-admin.js"></script>
 </body>
 </html>

@@ -468,9 +468,10 @@ router.post("/rubricas", async (req, res) => {
   try {
     await dbPromise.beginTransaction();
 
+    const profesorId = parseInt(req.body.ProfesorID, 10) || 1;
     const [rubricaResult] = await dbPromise.query(
-      "INSERT INTO Rubricas (ProfesorID, Nombre, Descripcion) VALUES (1, ?, ?)",
-      [payload.Nombre, payload.Descripcion]
+      "INSERT INTO Rubricas (ProfesorID, Nombre, Descripcion) VALUES (?, ?, ?)",
+      [profesorId, payload.Nombre, payload.Descripcion]
     );
 
     const rubricaId = rubricaResult.insertId;

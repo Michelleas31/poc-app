@@ -295,7 +295,41 @@
     <button class="btn btn-primary" onclick="document.getElementById('celebracion').classList.remove('show')">Continuar</button>
   </div>
 </div>
- 
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MODAL: Subir documento del proyecto                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-subir-doc">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <h3>Subir documento</h3>
+      <button class="modal-close" onclick="cerrarSubir()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
+        Sube documentos que expliquen de qué trata tu proyecto (PDF, Word, imágenes, etc.).
+        Tu profesor los podrá descargar para revisarlos.
+      </p>
+      <div class="form-group">
+        <label>Archivo *</label>
+        <input type="file" id="doc-file" class="form-control"
+               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.txt,.zip">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Tamaño máximo: 25 MB</div>
+      </div>
+      <div class="form-group">
+        <label>Descripción (opcional)</label>
+        <input type="text" id="doc-desc" class="form-control" placeholder="Ej. Propuesta inicial del proyecto">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="cerrarSubir()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-subir-doc" onclick="subirDocumento()">Subir</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast">
   <div class="toast-dot green" id="toast-dot"></div>
