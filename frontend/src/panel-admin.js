@@ -1,93 +1,33 @@
 const API = 'http://localhost:3000/api';
-
 let user = null;
 
-// ── NAVEGACIÓN ────────────────────────────────────────────────
 const pageTitles = {
-  dashboard:          ['Dashboard', 'Resumen general del sistema'],
-  usuarios:           ['Usuarios', 'Gestión de alumnos, profesores y admins'],
-  eventos:            ['Gestionar Eventos', 'Crea, edita y administra los eventos'],
-  horarios:           ['Horarios y Aulas', 'Configura espacios y tiempos del evento'],
-  rubricas:           ['Rúbricas', 'Criterios de evaluación por evento'],
-  proyectos:          ['Aprobar Proyectos', 'Acepta o rechaza inscripciones'],
-  evaluadores:        ['Asignar Evaluadores', 'Designa profesores por proyecto'],
-  'gestion-proyectos':['Gestión de Proyectos', 'Crea, edita y asigna proyectos a alumnos'],
+  dashboard: ['Dashboard', 'Resumen general del sistema'],
+  usuarios: ['Usuarios', 'Gestión de alumnos, profesores y admins'],
+  eventos: ['Gestionar Eventos', 'Crea, edita y administra los eventos'],
+  horarios: ['Horarios y Aulas', 'Configura espacios y tiempos del evento'],
+  rubricas: ['Rúbricas', 'Criterios de evaluación por evento'],
+  proyectos: ['Aprobar Proyectos', 'Revisa proyectos, citas, profesor, horario y sala'],
+  citas: ['Citas y QR', 'Aprueba o rechaza citas para liberar el QR de evaluación'],
+  evaluadores: ['Asignar Evaluadores', 'Designa profesores por proyecto'],
+  'gestion-proyectos': ['Gestión de Proyectos', 'Crea, edita y asigna proyectos a alumnos'],
+  analiticas: ['Analíticas', 'Ranking, comparativa e indicadores por evento'],
 };
- 
-function showSection(id, el) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('section-' + id).classList.add('active');
-  if (el) el.classList.add('active');
-  const [t, s] = pageTitles[id] || [id, ''];
-  document.getElementById('page-title').textContent = t;
-  document.getElementById('page-subtitle').textContent = s;
-  loadSection(id);
-}
- 
-function loadSection(id) {
-  if (id === 'dashboard')          loadDashboard();
-  if (id === 'usuarios')           loadUsuarios();
-  if (id === 'eventos')            loadEventos();
-  if (id === 'horarios')           { loadEventosSelect(); loadAulas(); }
-  if (id === 'rubricas')           loadRubricas();
-  if (id === 'proyectos')          { loadEventosSelect2(); loadProyectosEvento(); }
-  if (id === 'evaluadores')        { loadEventosSelectEval(); }
-  if (id === 'gestion-proyectos')  loadGestionProyectos();
-}
- 
-// ── TABS ──────────────────────────────────────────────────────
-function switchTab(el, tabId) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  ['tab-horarios', 'tab-aulas'].forEach(id => {
-    document.getElementById(id).style.display = id === tabId ? 'block' : 'none';
-  });
-}
- 
-// ── MODALES ───────────────────────────────────────────────────
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
- 
-document.addEventListener('DOMContentLoaded', () => {
-  const raw = sessionStorage.getItem('user');
-  if (!raw) return window.location.href = 'login.html';
-  user = JSON.parse(raw);
-  if (user.rol !== 'Admin') return window.location.href = 'login.html';
 
-  document.querySelectorAll('.modal-overlay').forEach(o => {
-    o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
-  });
-  loadDashboard();
-});
- 
-// ── TOAST ─────────────────────────────────────────────────────
-function toast(msg, type = 'green') {
-  const t = document.getElementById('toast');
-  document.getElementById('toast-msg').textContent = msg;
-  document.getElementById('toast-dot').className = `toast-dot ${type}`;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+const ESTADOS_CITA = {
+  pendiente_admin: 'Pendiente admin',
+  aprobada: 'Aprobada',
+  rechazada: 'Rechazada',
+  evaluada: 'Evaluada',
+};
+
+function $(id) {
+  return document.getElementById(id);
 }
- 
-// ── HELPERS ───────────────────────────────────────────────────
-function badgeEstado(estado) {
-  const map = {
-    proximo: 'badge-blue', activo: 'badge-green', finalizado: 'badge-gray',
-    no_disponible: 'badge-red', pendiente: 'badge-orange',
-    aceptado: 'badge-green', rechazado: 'badge-red',
-  };
-  const labels = {
-    proximo: 'Próximo', activo: 'Activo', finalizado: 'Finalizado',
-    no_disponible: 'No disponible', pendiente: 'Pendiente',
-    aceptado: 'Aceptado', rechazado: 'Rechazado',
-  };
-  return `<span class="badge ${map[estado] || 'badge-gray'}">${labels[estado] || estado}</span>`;
-}
- 
-function badgeRol(rol) {
-  const m = { Admin: 'badge-yellow', Profesor: 'badge-blue', Alumno: 'badge-green' };
-  return `<span class="badge ${m[rol] || 'badge-gray'}">${rol}</span>`;
+
+function safeText(value, fallback = '—') {
+  if (value === null || value === undefined || value === '') return fallback;
+  return String(value);
 }
 
 function escapeHtml(value) {
@@ -99,166 +39,522 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
- 
-// ── DASHBOARD ─────────────────────────────────────────────────
+function safeJsonForOnclick(obj) {
+  return escapeHtml(JSON.stringify(obj));
+}
+
+function formatDate(value) {
+  if (!value) return '—';
+
+  const raw = String(value);
+  const onlyDate = raw.includes('T') ? raw.split('T')[0] : raw;
+
+  if (!/^\d{4}-\d{2}-\d{2}/.test(onlyDate)) return '—';
+
+  const [y, m, d] = onlyDate.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+
+  if (Number.isNaN(date.getTime())) return '—';
+
+  return date.toLocaleDateString('es-MX', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  });
+}
+
+function formatDateLong(value) {
+  if (!value) return '—';
+
+  const raw = String(value);
+  const onlyDate = raw.includes('T') ? raw.split('T')[0] : raw;
+
+  if (!/^\d{4}-\d{2}-\d{2}/.test(onlyDate)) return '—';
+
+  const [y, m, d] = onlyDate.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+
+  if (Number.isNaN(date.getTime())) return '—';
+
+  return date.toLocaleDateString('es-MX', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function formatTime(value) {
+  if (!value) return '—';
+  return String(value).slice(0, 5);
+}
+
+function formatDateTime(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('es-MX', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+}
+
+function normalizeUser(raw) {
+  if (!raw) return null;
+
+  const parsed = JSON.parse(raw);
+
+  return {
+    ...parsed,
+    id: parsed.id || parsed.UsuarioID || parsed.usuarioId,
+    UsuarioID: parsed.UsuarioID || parsed.id || parsed.usuarioId,
+    nombre: parsed.nombre || parsed.Nombre,
+    Nombre: parsed.Nombre || parsed.nombre,
+    email: parsed.email || parsed.Email,
+    Email: parsed.Email || parsed.email,
+    rol: parsed.rol || parsed.Rol,
+    Rol: parsed.Rol || parsed.rol,
+  };
+}
+
+function apiGet(path) {
+  return fetch(`${API}${path}`).then(async (res) => {
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.message || `Error GET ${path}`);
+    return data;
+  });
+}
+
+function apiSend(path, method, body = {}) {
+  return fetch(`${API}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(async (res) => {
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.message || `Error ${method} ${path}`);
+    return data;
+  });
+}
+
+function toast(msg, type = 'green') {
+  const t = $('toast');
+  const m = $('toast-msg');
+  const d = $('toast-dot');
+
+  if (!t || !m || !d) {
+    alert(msg);
+    return;
+  }
+
+  m.textContent = msg;
+  d.className = `toast-dot ${type}`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function badgeEstado(estado) {
+  const normalized = String(estado || '').toLowerCase();
+
+  const map = {
+    proximo: 'badge-blue',
+    activo: 'badge-green',
+    finalizado: 'badge-gray',
+    no_disponible: 'badge-red',
+    pendiente: 'badge-orange',
+    pendiente_admin: 'badge-orange',
+    buscando_profesor: 'badge-orange',
+    profesor_seleccionado: 'badge-blue',
+    aprobado: 'badge-green',
+    aprobada: 'badge-green',
+    aceptado: 'badge-green',
+    rechazada: 'badge-red',
+    rechazado: 'badge-red',
+    evaluada: 'badge-blue',
+    completado: 'badge-green',
+    'en progreso': 'badge-blue',
+  };
+
+  const labels = {
+    proximo: 'Próximo',
+    activo: 'Activo',
+    finalizado: 'Finalizado',
+    no_disponible: 'No disponible',
+    pendiente: 'Pendiente',
+    pendiente_admin: 'Pendiente admin',
+    buscando_profesor: 'Buscando profesor',
+    profesor_seleccionado: 'Profesor seleccionado',
+    aprobado: 'Aprobado',
+    aprobada: 'Aprobada',
+    aceptado: 'Aceptado',
+    rechazada: 'Rechazada',
+    rechazado: 'Rechazado',
+    evaluada: 'Evaluada',
+    completado: 'Completado',
+    'en progreso': 'En progreso',
+  };
+
+  return `<span class="badge ${map[normalized] || 'badge-gray'}">${labels[normalized] || escapeHtml(estado || 'Sin estado')}</span>`;
+}
+
+function badgeRol(rol) {
+  const m = {
+    Admin: 'badge-yellow',
+    Profesor: 'badge-blue',
+    Alumno: 'badge-green',
+  };
+
+  return `<span class="badge ${m[rol] || 'badge-gray'}">${escapeHtml(rol || '—')}</span>`;
+}
+
+function openModal(id) {
+  const modal = $(id);
+  if (modal) modal.classList.add('open');
+}
+
+function closeModal(id) {
+  const modal = $(id);
+  if (modal) modal.classList.remove('open');
+}
+
+function showSection(id, el) {
+  document.querySelectorAll('.section').forEach((s) => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+
+  const section = $('section-' + id) || $(id);
+  if (section) section.classList.add('active');
+
+  if (el) {
+    el.classList.add('active');
+  } else {
+    const nav = document.querySelector(`[data-section="${id}"]`);
+    if (nav) nav.classList.add('active');
+  }
+
+  const [t, s] = pageTitles[id] || [id, ''];
+  if ($('page-title')) $('page-title').textContent = t;
+  if ($('page-subtitle')) $('page-subtitle').textContent = s;
+
+  loadSection(id);
+}
+
+function loadSection(id) {
+  if (id === 'dashboard') loadDashboard();
+  if (id === 'usuarios') loadUsuarios();
+  if (id === 'eventos') loadEventos();
+  if (id === 'horarios') {
+    loadEventosSelect();
+    loadAulas();
+  }
+  if (id === 'rubricas') loadRubricas();
+  if (id === 'proyectos') {
+    loadEventosSelect2();
+    loadProyectosEvento();
+    loadCitasAdmin();
+  }
+  if (id === 'citas') loadCitasAdmin();
+  if (id === 'evaluadores') loadEventosSelectEval();
+  if (id === 'gestion-proyectos') loadGestionProyectos();
+  if (id === 'analiticas') loadAnaliticas();
+}
+
+function switchTab(el, tabId) {
+  document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  ['tab-horarios', 'tab-aulas'].forEach((id) => {
+    const tab = $(id);
+    if (tab) tab.style.display = id === tabId ? 'block' : 'none';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const raw =
+    sessionStorage.getItem('user') ||
+    localStorage.getItem('user') ||
+    localStorage.getItem('usuario');
+
+  if (!raw) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  user = normalizeUser(raw);
+
+  if (!user || (user.rol !== 'Admin' && user.Rol !== 'Admin')) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  document.querySelectorAll('.modal-overlay').forEach((o) => {
+    o.addEventListener('click', (e) => {
+      if (e.target === o) o.classList.remove('open');
+    });
+  });
+
+  document.querySelectorAll('[data-section]').forEach((btn) => {
+    btn.addEventListener('click', () => showSection(btn.dataset.section, btn));
+  });
+
+  loadGestionProyectos();
+  loadDashboard();
+});
+
+// ─────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────
+
 async function loadDashboard() {
   try {
-    const [us, ev, pr] = await Promise.all([
-      fetch(`${API}/usuarios`).then(r => r.json()).catch(() => []),
-      fetch(`${API}/eventos`).then(r => r.json()).catch(() => []),
-      fetch(`${API}/eventos/proyectos`).then(r => r.json()).catch(() => []),
+    const [usuarios, proyectos, citas] = await Promise.all([
+      apiGet('/usuarios').catch(() => []),
+      apiGet('/proyectos').catch(() => []),
+      apiGet('/citas').catch(() => []),
     ]);
- 
-    document.getElementById('stat-usuarios').textContent =
-      Array.isArray(us) ? us.filter(u => u.Activo).length : '—';
-    document.getElementById('stat-eventos').textContent =
-      Array.isArray(ev) ? ev.filter(e => ['proximo', 'activo'].includes(e.Estado)).length : '—';
- 
-    const pend = Array.isArray(pr) ? pr.filter(p => p.Estado === 'pendiente') : [];
-    const acep = Array.isArray(pr) ? pr.filter(p => p.Estado === 'aceptado')  : [];
-    document.getElementById('stat-pendientes').textContent = pend.length;
-    document.getElementById('stat-aceptados').textContent  = acep.length;
-    document.getElementById('badge-proyectos').textContent = pend.length;
- 
-    const tbody  = document.getElementById('dash-proyectos-tbody');
-    const recent = pend.slice(0, 5);
- 
+
+    const usuariosActivos = Array.isArray(usuarios)
+      ? usuarios.filter((u) => Number(u.Activo) === 1 || u.Activo === true).length
+      : 0;
+
+    const proyectosPendientes = Array.isArray(proyectos)
+      ? proyectos.filter((p) =>
+          ['pendiente', 'pendiente_admin', 'buscando_profesor', 'profesor_seleccionado'].includes(
+            String(p.Estatus || p.EstadoAprobacion || '').toLowerCase()
+          )
+        )
+      : [];
+
+    const citasPendientes = Array.isArray(citas)
+      ? citas.filter((c) => String(c.Estado || '').toLowerCase() === 'pendiente_admin')
+      : [];
+
+    const citasAprobadas = Array.isArray(citas)
+      ? citas.filter((c) => String(c.Estado || '').toLowerCase() === 'aprobada')
+      : [];
+
+    if ($('stat-usuarios')) $('stat-usuarios').textContent = usuariosActivos;
+    if ($('stat-eventos')) $('stat-eventos').textContent = Array.isArray(proyectos) ? proyectos.length : 0;
+    if ($('stat-pendientes')) $('stat-pendientes').textContent = citasPendientes.length || proyectosPendientes.length;
+    if ($('stat-aceptados')) $('stat-aceptados').textContent = citasAprobadas.length;
+    if ($('badge-proyectos')) $('badge-proyectos').textContent = citasPendientes.length || '';
+
+    const tbody = $('dash-proyectos-tbody');
+    if (!tbody) return;
+
+    const recent = citasPendientes.slice(0, 5);
+
     if (!recent.length) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Sin proyectos pendientes</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">
+            Sin citas pendientes de aprobación
+          </td>
+        </tr>`;
       return;
     }
- 
-    tbody.innerHTML = recent.map(p => `
+
+    tbody.innerHTML = recent.map((c) => `
       <tr>
-        <td class="td-name">${p.TituloProyecto || p.Titulo || '—'}</td>
-        <td>${p.NombreAlumno || '—'}</td>
-        <td>${p.NombreEvento || '—'}</td>
-        <td>${p.CreatedAt ? new Date(p.CreatedAt).toLocaleDateString('es-MX') : '—'}</td>
-        <td>${badgeEstado(p.Estado)}</td>
+        <td class="td-name">${escapeHtml(c.Titulo || c.TituloProyecto || '—')}</td>
+        <td>${escapeHtml(c.NombreAlumno || '—')}</td>
+        <td>${escapeHtml(c.NombreProfesor || '—')}</td>
+        <td>${formatDate(c.Fecha)} · ${formatTime(c.HoraInicio)} · ${escapeHtml(c.Sala || 'Sin sala')}</td>
+        <td>${badgeEstado(c.Estado)}</td>
         <td>
-          <button class="btn btn-success btn-sm" onclick="cambiarEstadoProyecto(${p.EventoProyectoID},'aceptado')">Aceptar</button>
-          <button class="btn btn-danger btn-sm" onclick="cambiarEstadoProyecto(${p.EventoProyectoID},'rechazado')" style="margin-left:6px">Rechazar</button>
+          <button class="btn btn-success btn-sm" onclick="aprobarCita(${c.CitaID})">Aprobar</button>
+          <button class="btn btn-danger btn-sm" onclick="rechazarCita(${c.CitaID})" style="margin-left:6px">Rechazar</button>
         </td>
-      </tr>`).join('');
-  } catch (e) { console.error(e); }
+      </tr>
+    `).join('');
+  } catch (e) {
+    console.error(e);
+    toast('Error al cargar dashboard', 'red');
+  }
 }
- 
-// ── USUARIOS ──────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// USUARIOS
+// ─────────────────────────────────────────────
+
 let allUsuarios = [];
- 
+
 async function loadUsuarios() {
-  const tbody = document.getElementById('usuarios-tbody');
+  const tbody = $('usuarios-tbody');
+
   try {
-    const data = await fetch(`${API}/usuarios`).then(r => r.json());
+    const data = await apiGet('/usuarios');
     allUsuarios = Array.isArray(data) ? data : [];
     renderUsuarios(allUsuarios);
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--red)">Error al cargar usuarios</td></tr>`;
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center;padding:24px;color:var(--red)">
+            Error al cargar usuarios
+          </td>
+        </tr>`;
+    }
   }
 }
- 
+
 function renderUsuarios(list) {
-  const tbody = document.getElementById('usuarios-tbody');
+  const tbody = $('usuarios-tbody');
+  if (!tbody) return;
+
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Sin usuarios registrados</td></tr>`;
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">
+          Sin usuarios registrados
+        </td>
+      </tr>`;
     return;
   }
-  tbody.innerHTML = list.map(u => `
+
+  tbody.innerHTML = list.map((u) => `
     <tr>
-      <td class="td-name">${u.Nombre}</td>
-      <td>${u.Email}</td>
+      <td class="td-name">${escapeHtml(u.Nombre)}</td>
+      <td>${escapeHtml(u.Email)}</td>
       <td>${badgeRol(u.Rol)}</td>
-      <td>${u.Activo
-        ? '<span class="badge badge-green">Activo</span>'
-        : '<span class="badge badge-red">Inactivo</span>'}</td>
       <td>
-        <button class="btn btn-ghost btn-sm" onclick="editUsuario(${JSON.stringify(u).replace(/"/g, '&quot;')})">Editar</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteUsuario(${u.UsuarioID},'${u.Nombre}')" style="margin-left:6px">
+        ${u.Activo
+          ? '<span class="badge badge-green">Activo</span>'
+          : '<span class="badge badge-red">Inactivo</span>'}
+      </td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="editUsuario(${safeJsonForOnclick(u)})">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUsuario(${u.UsuarioID},'${escapeHtml(u.Nombre)}')" style="margin-left:6px">
           ${u.Activo ? 'Desactivar' : 'Activar'}
         </button>
       </td>
-    </tr>`).join('');
+    </tr>
+  `).join('');
 }
- 
+
 function filterUsuarios(q) {
-  const f = allUsuarios.filter(u =>
-    u.Nombre.toLowerCase().includes(q.toLowerCase()) ||
-    u.Email.toLowerCase().includes(q.toLowerCase())
+  const query = String(q || '').toLowerCase();
+
+  const f = allUsuarios.filter((u) =>
+    String(u.Nombre || '').toLowerCase().includes(query) ||
+    String(u.Email || '').toLowerCase().includes(query)
   );
+
   renderUsuarios(f);
 }
- 
+
 function editUsuario(u) {
-  document.getElementById('modal-usuario-title').textContent = 'Editar usuario';
-  document.getElementById('usuario-id').value   = u.UsuarioID;
-  document.getElementById('u-nombre').value     = u.Nombre;
-  document.getElementById('u-email').value      = u.Email;
-  document.getElementById('u-rol').value        = u.Rol;
-  document.getElementById('u-password').value   = '';
-  document.getElementById('u-pass-hint').style.display = 'inline';
+  if ($('modal-usuario-title')) $('modal-usuario-title').textContent = 'Editar usuario';
+  if ($('usuario-id')) $('usuario-id').value = u.UsuarioID;
+  if ($('u-nombre')) $('u-nombre').value = u.Nombre || '';
+  if ($('u-email')) $('u-email').value = u.Email || '';
+  if ($('u-rol')) $('u-rol').value = u.Rol || 'Alumno';
+  if ($('u-password')) $('u-password').value = '';
+  if ($('u-pass-hint')) $('u-pass-hint').style.display = 'inline';
+
   openModal('modal-usuario');
 }
- 
+
 async function saveUsuario() {
-  const id   = document.getElementById('usuario-id').value;
+  const id = $('usuario-id')?.value;
+
   const body = {
-    Nombre:    document.getElementById('u-nombre').value,
-    Email:     document.getElementById('u-email').value,
-    Rol:       document.getElementById('u-rol').value,
-    Contraseña: document.getElementById('u-password').value || undefined,
+    Nombre: $('u-nombre')?.value?.trim(),
+    Email: $('u-email')?.value?.trim(),
+    Rol: $('u-rol')?.value,
+    Contraseña: $('u-password')?.value || undefined,
   };
-  if (!body.Nombre || !body.Email) return toast('Completa nombre y correo', 'red');
+
+  if (!body.Nombre || !body.Email) {
+    toast('Completa nombre y correo', 'red');
+    return;
+  }
+
   try {
     const method = id ? 'PUT' : 'POST';
-    const url    = id ? `${API}/usuarios/${id}` : `${API}/usuarios`;
-    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const url = id ? `/usuarios/${id}` : '/usuarios';
+
+    await apiSend(url, method, body);
+
     closeModal('modal-usuario');
     toast(id ? 'Usuario actualizado' : 'Usuario creado');
-    document.getElementById('usuario-id').value = '';
+
+    if ($('usuario-id')) $('usuario-id').value = '';
     loadUsuarios();
-  } catch (e) { toast('Error al guardar', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error al guardar', 'red');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Guardar proyecto';
+    }
+  }
 }
- 
+
 async function deleteUsuario(id, nombre) {
   if (!confirm(`¿Cambiar estado de "${nombre}"?`)) return;
+
   try {
-    await fetch(`${API}/usuarios/${id}/toggle`, { method: 'PUT' });
+    await apiSend(`/usuarios/${id}/toggle`, 'PUT');
     toast('Estado actualizado');
     loadUsuarios();
-  } catch (e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
 }
- 
-// ── EVENTOS ───────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// EVENTOS
+// ─────────────────────────────────────────────
+
 async function loadEventos() {
-  const grid = document.getElementById('eventos-grid');
+  const grid = $('eventos-grid');
+  if (!grid) return;
+
   try {
-    const data = await fetch(`${API}/eventos`).then(r => r.json());
+    const data = await apiGet('/eventos');
+
     if (!Array.isArray(data) || !data.length) {
       grid.innerHTML = `
         <div class="empty">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
           </svg>
           <p>No hay eventos registrados aún</p>
         </div>`;
       return;
     }
-    grid.innerHTML = data.map(ev => `
-        <div class="event-card">
-            <div class="event-card-top">
-                <div>
-                    <div class="event-name">${ev.Nombre}</div>
-                    <div class="event-date">📅 ${(() => {
-                        const [y,m,d] = (ev.Fecha.split('T')[0]).split('-');
-                        return new Date(+y, +m-1, +d).toLocaleDateString('es-MX', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-                    })()}</div>
-                </div>
+
+    grid.innerHTML = data.map((ev) => `
+      <div class="event-card">
+        <div class="event-card-top">
+          <div>
+            <div class="event-name">${escapeHtml(ev.Nombre)}</div>
+            <div class="event-date">📅 ${formatDateLong(ev.Fecha)}</div>
+          </div>
           ${badgeEstado(ev.Estado)}
         </div>
-        <div class="event-hours">🕐 ${ev.HoraInicio} – ${ev.HoraFin}</div>
-        ${ev.Descripcion ? `<p style="font-size:13px;color:var(--text-muted);line-height:1.5">${ev.Descripcion}</p>` : ''}
+
+        <div class="event-hours">🕐 ${formatTime(ev.HoraInicio)} – ${formatTime(ev.HoraFin)}</div>
+
+        ${ev.Descripcion
+          ? `<p style="font-size:13px;color:var(--text-muted);line-height:1.5">${escapeHtml(ev.Descripcion)}</p>`
+          : ''}
+
         <div class="event-actions">
-          <button class="btn btn-ghost btn-sm" onclick="editEvento(${JSON.stringify(ev).replace(/"/g, '&quot;')})">Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="editEvento(${safeJsonForOnclick(ev)})">Editar</button>
+
           <select class="form-control btn-sm" style="padding:5px 10px;font-size:12px;width:auto" onchange="cambiarEstadoEvento(${ev.EventoID},this.value)">
             <option value="">Cambiar estado</option>
             <option value="proximo">Próximo</option>
@@ -266,189 +562,320 @@ async function loadEventos() {
             <option value="no_disponible">No disponible</option>
             <option value="finalizado">Finalizado</option>
           </select>
-          <button class="btn btn-danger btn-sm" onclick="deleteEvento(${ev.EventoID},'${ev.Nombre}')">Eliminar</button>
+
+          <button class="btn btn-danger btn-sm" onclick="deleteEvento(${ev.EventoID},'${escapeHtml(ev.Nombre)}')">Eliminar</button>
         </div>
-      </div>`).join('');
+      </div>
+    `).join('');
   } catch (e) {
     grid.innerHTML = `<div style="color:var(--red);font-size:13px">Error al cargar eventos</div>`;
   }
 }
- 
-function editEvento(ev) {
-  document.getElementById('modal-evento-title').textContent = 'Editar evento';
-  document.getElementById('evento-id').value   = ev.EventoID;
-  document.getElementById('ev-nombre').value   = ev.Nombre;
-  document.getElementById('ev-desc').value     = ev.Descripcion || '';
-  document.getElementById('ev-fecha').value    = ev.Fecha?.split('T')[0] || '';
-  document.getElementById('ev-estado').value   = ev.Estado;
-  document.getElementById('ev-inicio').value   = ev.HoraInicio;
-  document.getElementById('ev-fin').value      = ev.HoraFin;
-  openModal('modal-evento');
-}
- 
-async function saveEvento() {
-  const id   = document.getElementById('evento-id').value;
-  const body = {
-    Nombre:      document.getElementById('ev-nombre').value,
-    Descripcion: document.getElementById('ev-desc').value,
-    Fecha:       document.getElementById('ev-fecha').value,
-    HoraInicio:  document.getElementById('ev-inicio').value,
-    HoraFin:     document.getElementById('ev-fin').value,
-    Estado:      document.getElementById('ev-estado').value,
-  };
-  if (!body.Nombre || !body.Fecha) return toast('Completa nombre y fecha', 'red');
+
+async function cargarRubricasSelect(valorSeleccionado) {
+  const sel = $('ev-rubrica');
+  if (!sel) return;
+
   try {
-    const method = id ? 'PUT' : 'POST';
-    const url    = id ? `${API}/eventos/${id}` : `${API}/eventos`;
-    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    closeModal('modal-evento');
-    document.getElementById('evento-id').value = '';
-    toast(id ? 'Evento actualizado' : 'Evento creado');
-    loadEventos();
-  } catch (e) { toast('Error al guardar', 'red'); }
-}
- 
-async function cambiarEstadoEvento(id, estado) {
-  if (!estado) return;
-  try {
-    await fetch(`${API}/eventos/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ Estado: estado }) });
-    toast('Estado del evento actualizado');
-    loadEventos();
-  } catch (e) { toast('Error', 'red'); }
-}
- 
-async function deleteEvento(id, nombre) {
-  if (!confirm(`¿Eliminar el evento "${nombre}"?`)) return;
-  try {
-    await fetch(`${API}/eventos/${id}`, { method: 'DELETE' });
-    toast('Evento eliminado');
-    loadEventos();
-  } catch (e) { toast('Error', 'red'); }
-}
- 
-// ── AULAS ─────────────────────────────────────────────────────
-async function loadAulas() {
-  const tbody = document.getElementById('aulas-tbody');
-  try {
-    const data = await fetch(`${API}/aulas`).then(r => r.json());
-    if (!Array.isArray(data) || !data.length) {
-      tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-muted)">Sin aulas registradas</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = data.map(a => `
-      <tr>
-        <td class="td-name">${a.Nombre}</td>
-        <td>${a.Capacidad || '—'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteAula(${a.AulaID},'${a.Nombre}')">Eliminar</button></td>
-      </tr>`).join('');
- 
-    document.getElementById('hor-aula').innerHTML =
-      data.map(a => `<option value="${a.AulaID}">${a.Nombre}</option>`).join('');
+    const data = await apiGet('/rubricas');
+    const rubricas = Array.isArray(data) ? data : [];
+
+    sel.innerHTML = '<option value="">Sin rúbrica</option>' +
+      rubricas.map((r) =>
+        `<option value="${r.RubricaID}"${r.RubricaID == valorSeleccionado ? ' selected' : ''}>${escapeHtml(r.Nombre)}</option>`
+      ).join('');
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--red);padding:16px">Error</td></tr>`;
+    sel.innerHTML = '<option value="">Error al cargar rúbricas</option>';
   }
 }
- 
+
+async function abrirModalEvento() {
+  if ($('modal-evento-title')) $('modal-evento-title').textContent = 'Nuevo evento';
+  if ($('evento-id')) $('evento-id').value = '';
+  if ($('ev-nombre')) $('ev-nombre').value = '';
+  if ($('ev-desc')) $('ev-desc').value = '';
+  if ($('ev-fecha')) $('ev-fecha').value = '';
+  if ($('ev-estado')) $('ev-estado').value = 'proximo';
+  if ($('ev-inicio')) $('ev-inicio').value = '';
+  if ($('ev-fin')) $('ev-fin').value = '';
+
+  await cargarRubricasSelect(null);
+  openModal('modal-evento');
+}
+
+async function editEvento(ev) {
+  if ($('modal-evento-title')) $('modal-evento-title').textContent = 'Editar evento';
+  if ($('evento-id')) $('evento-id').value = ev.EventoID;
+  if ($('ev-nombre')) $('ev-nombre').value = ev.Nombre || '';
+  if ($('ev-desc')) $('ev-desc').value = ev.Descripcion || '';
+  if ($('ev-fecha')) $('ev-fecha').value = ev.Fecha?.split('T')[0] || '';
+  if ($('ev-estado')) $('ev-estado').value = ev.Estado || 'proximo';
+  if ($('ev-inicio')) $('ev-inicio').value = formatTime(ev.HoraInicio);
+  if ($('ev-fin')) $('ev-fin').value = formatTime(ev.HoraFin);
+
+  await cargarRubricasSelect(ev.RubricaID);
+  openModal('modal-evento');
+}
+
+async function saveEvento() {
+  const id = $('evento-id')?.value;
+
+  const body = {
+    Nombre: $('ev-nombre')?.value?.trim(),
+    Descripcion: $('ev-desc')?.value?.trim(),
+    Fecha: $('ev-fecha')?.value,
+    HoraInicio: $('ev-inicio')?.value,
+    HoraFin: $('ev-fin')?.value,
+    Estado: $('ev-estado')?.value,
+    RubricaID: $('ev-rubrica')?.value || null,
+  };
+
+  if (!body.Nombre || !body.Fecha) {
+    toast('Completa nombre y fecha', 'red');
+    return;
+  }
+
+  try {
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/eventos/${id}` : '/eventos';
+
+    await apiSend(url, method, body);
+
+    closeModal('modal-evento');
+    if ($('evento-id')) $('evento-id').value = '';
+
+    toast(id ? 'Evento actualizado' : 'Evento creado');
+    loadEventos();
+  } catch (e) {
+    toast(e.message || 'Error al guardar', 'red');
+  }
+}
+
+async function cambiarEstadoEvento(id, estado) {
+  if (!estado) return;
+
+  try {
+    await apiSend(`/eventos/${id}`, 'PUT', { Estado: estado });
+    toast('Estado del evento actualizado');
+    loadEventos();
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
+}
+
+async function deleteEvento(id, nombre) {
+  if (!confirm(`¿Eliminar el evento "${nombre}"?`)) return;
+
+  try {
+    await apiSend(`/eventos/${id}`, 'DELETE');
+    toast('Evento eliminado');
+    loadEventos();
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
+}
+
+// ─────────────────────────────────────────────
+// AULAS Y HORARIOS
+// ─────────────────────────────────────────────
+
+async function loadAulas() {
+  const tbody = $('aulas-tbody');
+
+  try {
+    const data = await apiGet('/aulas');
+
+    if (!Array.isArray(data) || !data.length) {
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="3" style="text-align:center;padding:24px;color:var(--text-muted)">
+              Sin aulas registradas
+            </td>
+          </tr>`;
+      }
+      return;
+    }
+
+    if (tbody) {
+      tbody.innerHTML = data.map((a) => `
+        <tr>
+          <td class="td-name">${escapeHtml(a.Nombre)}</td>
+          <td>${escapeHtml(a.Capacidad || '—')}</td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="deleteAula(${a.AulaID},'${escapeHtml(a.Nombre)}')">Eliminar</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    if ($('hor-aula')) {
+      $('hor-aula').innerHTML = data.map((a) =>
+        `<option value="${a.AulaID}">${escapeHtml(a.Nombre)}</option>`
+      ).join('');
+    }
+  } catch (e) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="color:var(--red);padding:16px">Error</td></tr>`;
+  }
+}
+
 async function saveAula() {
   const body = {
-    Nombre:    document.getElementById('aula-nombre').value,
-    Capacidad: document.getElementById('aula-capacidad').value,
+    Nombre: $('aula-nombre')?.value?.trim(),
+    Capacidad: $('aula-capacidad')?.value || null,
   };
-  if (!body.Nombre) return toast('Ingresa nombre del aula', 'red');
+
+  if (!body.Nombre) {
+    toast('Ingresa nombre del aula', 'red');
+    return;
+  }
+
   try {
-    await fetch(`${API}/aulas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await apiSend('/aulas', 'POST', body);
     closeModal('modal-aula');
     toast('Aula creada');
     loadAulas();
-  } catch (e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
 }
- 
+
 async function deleteAula(id, nombre) {
   if (!confirm(`¿Eliminar "${nombre}"?`)) return;
+
   try {
-    await fetch(`${API}/aulas/${id}`, { method: 'DELETE' });
+    await apiSend(`/aulas/${id}`, 'DELETE');
     toast('Aula eliminada');
     loadAulas();
-  } catch (e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
 }
- 
-// ── HORARIOS ──────────────────────────────────────────────────
+
 async function loadEventosSelect() {
   try {
-    const data = await fetch(`${API}/eventos`).then(r => r.json());
-    document.getElementById('select-evento-horario').innerHTML =
-      '<option value="">Seleccionar evento...</option>' +
-      (Array.isArray(data) ? data.map(e => `<option value="${e.EventoID}">${e.Nombre}</option>`).join('') : '');
+    const data = await apiGet('/eventos');
+
+    if ($('select-evento-horario')) {
+      $('select-evento-horario').innerHTML =
+        '<option value="">Seleccionar evento...</option>' +
+        (Array.isArray(data)
+          ? data.map((e) => `<option value="${e.EventoID}">${escapeHtml(e.Nombre)}</option>`).join('')
+          : '');
+    }
   } catch (e) {}
 }
- 
+
 async function loadHorarios() {
-  const eid   = document.getElementById('select-evento-horario').value;
-  const tbody = document.getElementById('horarios-tbody');
+  const eid = $('select-evento-horario')?.value;
+  const tbody = $('horarios-tbody');
+
+  if (!tbody) return;
+
   if (!eid) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Selecciona un evento</td></tr>`;
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">
+          Selecciona un evento
+        </td>
+      </tr>`;
     return;
   }
+
   try {
-    const data = await fetch(`${API}/eventos/${eid}/horarios`).then(r => r.json());
+    const data = await apiGet(`/eventos/${eid}/horarios`);
+
     if (!Array.isArray(data) || !data.length) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Sin horarios para este evento</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">
+            Sin horarios para este evento
+          </td>
+        </tr>`;
       return;
     }
-    tbody.innerHTML = data.map(h => `
+
+    tbody.innerHTML = data.map((h) => `
       <tr>
-        <td class="td-name">${h.NombreAula || h.AulaID}</td>
-        <td>${h.HoraInicio}</td>
-        <td>${h.HoraFin}</td>
-        <td>${h.Disponible
-          ? '<span class="badge badge-green">Sí</span>'
-          : '<span class="badge badge-red">No</span>'}</td>
+        <td class="td-name">${escapeHtml(h.NombreAula || h.AulaID)}</td>
+        <td>${formatTime(h.HoraInicio)}</td>
+        <td>${formatTime(h.HoraFin)}</td>
         <td>
-          <button class="btn btn-ghost btn-sm" onclick="toggleHorario(${h.HorarioID},${h.Disponible})">${h.Disponible ? 'Desactivar' : 'Activar'}</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteHorario(${h.HorarioID})" style="margin-left:6px">Eliminar</button>
+          ${h.Disponible
+            ? '<span class="badge badge-green">Sí</span>'
+            : '<span class="badge badge-red">No</span>'}
         </td>
-      </tr>`).join('');
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="toggleHorario(${h.HorarioID},${h.Disponible ? 1 : 0})">
+            ${h.Disponible ? 'Desactivar' : 'Activar'}
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteHorario(${h.HorarioID})" style="margin-left:6px">
+            Eliminar
+          </button>
+        </td>
+      </tr>
+    `).join('');
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);padding:16px">Error</td></tr>`;
   }
 }
- 
+
 async function saveHorario() {
-  const eid = document.getElementById('select-evento-horario').value;
-  if (!eid) return toast('Selecciona un evento primero', 'red');
+  const eid = $('select-evento-horario')?.value;
+
+  if (!eid) {
+    toast('Selecciona un evento primero', 'red');
+    return;
+  }
+
   const body = {
-    EventoID:   eid,
-    AulaID:     document.getElementById('hor-aula').value,
-    HoraInicio: document.getElementById('hor-inicio').value,
-    HoraFin:    document.getElementById('hor-fin').value,
+    EventoID: eid,
+    AulaID: $('hor-aula')?.value,
+    HoraInicio: $('hor-inicio')?.value,
+    HoraFin: $('hor-fin')?.value,
   };
-  if (!body.HoraInicio || !body.HoraFin) return toast('Ingresa horas', 'red');
+
+  if (!body.HoraInicio || !body.HoraFin) {
+    toast('Ingresa horas', 'red');
+    return;
+  }
+
   try {
-    await fetch(`${API}/horarios`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await apiSend('/horarios', 'POST', body);
     closeModal('modal-horario');
     toast('Horario agregado');
     loadHorarios();
-  } catch (e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
 }
- 
+
 async function toggleHorario(id, actual) {
   try {
-    await fetch(`${API}/horarios/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ Disponible: actual ? 0 : 1 }) });
+    await apiSend(`/horarios/${id}`, 'PUT', { Disponible: actual ? 0 : 1 });
     toast('Horario actualizado');
     loadHorarios();
-  } catch (e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
 }
- 
+
 async function deleteHorario(id) {
   if (!confirm('¿Eliminar este horario?')) return;
+
   try {
-    await fetch(`${API}/horarios/${id}`, { method: 'DELETE' });
+    await apiSend(`/horarios/${id}`, 'DELETE');
     toast('Horario eliminado');
     loadHorarios();
-  } catch (e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
 }
- 
-// ── RÚBRICAS ──────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────
+// RÚBRICAS
+// ─────────────────────────────────────────────
+
 const DEFAULT_RUBRICA_LEVELS = [
   {
     nombre: 'Sobresaliente',
@@ -479,7 +906,7 @@ const DEFAULT_RUBRICA_LEVELS = [
 let criterios = [];
 
 function createDefaultLevels() {
-  return DEFAULT_RUBRICA_LEVELS.map(nivel => ({ ...nivel }));
+  return DEFAULT_RUBRICA_LEVELS.map((n) => ({ ...n }));
 }
 
 function createDefaultCriterio() {
@@ -492,22 +919,21 @@ function createDefaultCriterio() {
 }
 
 function normalizarOrdenCriterios() {
-  criterios.forEach((criterio, index) => {
-    criterio.orden = index + 1;
-    criterio.niveles = (criterio.niveles || [])
+  criterios.forEach((c, i) => {
+    c.orden = i + 1;
+    c.niveles = (c.niveles || [])
       .slice()
       .sort((a, b) => (a.orden || 0) - (b.orden || 0))
-      .map((nivel, nivelIndex) => ({
-        ...nivel,
-        orden: nivelIndex + 1,
-      }));
+      .map((n, j) => ({ ...n, orden: j + 1 }));
   });
 }
 
 function resetRubricaForm() {
   criterios = [];
-  document.getElementById('rub-nombre').value = '';
-  document.getElementById('rub-desc').value = '';
+
+  if ($('rub-nombre')) $('rub-nombre').value = '';
+  if ($('rub-desc')) $('rub-desc').value = '';
+
   renderCriterios();
 }
 
@@ -518,62 +944,62 @@ function openModalRubrica() {
 }
 
 function renderCriterios() {
-  const list = document.getElementById('criterios-list');
+  const list = $('criterios-list');
   if (!list) return;
 
   if (!criterios.length) {
     list.innerHTML = `
       <div style="padding:18px;border:1px dashed var(--border);border-radius:12px;background:var(--surface2);text-align:center;color:var(--text-muted);font-size:13px">
-        Agrega al menos un criterio para construir la rubrica.
+        Agrega al menos un criterio para construir la rúbrica.
       </div>`;
     return;
   }
 
-  list.innerHTML = criterios.map((criterio, criterioIndex) => `
+  list.innerHTML = criterios.map((c, ci) => `
     <div style="border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden">
       <div style="display:grid;grid-template-columns:minmax(280px,320px) minmax(0,1fr);gap:0">
         <div style="padding:16px;border-right:1px solid var(--border);background:var(--surface2)">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
             <div>
-              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.45px;color:var(--text-muted);font-weight:700">Criterio ${criterioIndex + 1}</div>
-              <div style="font-size:12px;color:var(--text-dim)">Orden ${criterioIndex + 1}</div>
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.45px;color:var(--text-muted);font-weight:700">
+                Criterio ${ci + 1}
+              </div>
             </div>
-            <button class="btn btn-danger btn-sm" onclick="removeCriterio(${criterioIndex})">Eliminar</button>
+            <button class="btn btn-danger btn-sm" onclick="removeCriterio(${ci})">Eliminar</button>
           </div>
 
           <div class="form-group" style="margin-bottom:12px">
             <label>Nombre del criterio</label>
-            <input class="form-control" value="${escapeHtml(criterio.nombre)}" placeholder="Ej. Desarrollo de la temática del proyecto" oninput="updateCriterioField(${criterioIndex}, 'nombre', this.value)">
+            <input class="form-control" value="${escapeHtml(c.nombre)}" placeholder="Ej. Desarrollo de la temática" oninput="updateCriterioField(${ci},'nombre',this.value)">
           </div>
 
           <div class="form-group" style="margin-bottom:0">
-            <label>Descripcion del criterio</label>
-            <textarea class="form-control" rows="4" style="resize:vertical" placeholder="Opcional" oninput="updateCriterioField(${criterioIndex}, 'descripcion', this.value)">${escapeHtml(criterio.descripcion || '')}</textarea>
+            <label>Descripción</label>
+            <textarea class="form-control" rows="4" style="resize:vertical" oninput="updateCriterioField(${ci},'descripcion',this.value)">${escapeHtml(c.descripcion || '')}</textarea>
           </div>
         </div>
 
         <div style="padding:16px">
           <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
-            ${criterio.niveles.map((nivel, nivelIndex) => `
-              <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-                  <span class="badge badge-blue">Nivel ${nivelIndex + 1}</span>
-                  <span style="font-size:11px;color:var(--text-muted)">Orden ${nivelIndex + 1}</span>
+            ${c.niveles.map((n, ni) => `
+              <div style="border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:12px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <span class="badge badge-blue">Nivel ${ni + 1}</span>
                 </div>
 
                 <div>
                   <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:6px">Nombre</label>
-                  <input class="form-control" value="${escapeHtml(nivel.nombre)}" oninput="updateNivelField(${criterioIndex}, ${nivelIndex}, 'nombre', this.value)">
+                  <input class="form-control" value="${escapeHtml(n.nombre)}" oninput="updateNivelField(${ci},${ni},'nombre',this.value)">
                 </div>
 
                 <div>
                   <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:6px">Puntaje</label>
-                  <input class="form-control" type="number" min="0" step="1" value="${escapeHtml(nivel.puntaje)}" oninput="updateNivelField(${criterioIndex}, ${nivelIndex}, 'puntaje', this.value)">
+                  <input class="form-control" type="number" min="0" step="1" value="${escapeHtml(n.puntaje)}" oninput="updateNivelField(${ci},${ni},'puntaje',this.value)">
                 </div>
 
                 <div style="flex:1">
-                  <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:6px">Descripcion</label>
-                  <textarea class="form-control" rows="5" style="resize:vertical" oninput="updateNivelField(${criterioIndex}, ${nivelIndex}, 'descripcion', this.value)">${escapeHtml(nivel.descripcion)}</textarea>
+                  <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:6px">Descripción</label>
+                  <textarea class="form-control" rows="5" style="resize:vertical" oninput="updateNivelField(${ci},${ni},'descripcion',this.value)">${escapeHtml(n.descripcion)}</textarea>
                 </div>
               </div>
             `).join('')}
@@ -590,713 +1016,1247 @@ function addCriterio() {
   renderCriterios();
 }
 
-function removeCriterio(index) {
-  criterios.splice(index, 1);
+function removeCriterio(i) {
+  criterios.splice(i, 1);
   normalizarOrdenCriterios();
   renderCriterios();
 }
 
-function updateCriterioField(index, field, value) {
-  if (!criterios[index]) return;
-  criterios[index][field] = value;
+function updateCriterioField(i, f, v) {
+  if (criterios[i]) criterios[i][f] = v;
 }
 
-function updateNivelField(criterioIndex, nivelIndex, field, value) {
-  if (!criterios[criterioIndex] || !criterios[criterioIndex].niveles[nivelIndex]) return;
-  criterios[criterioIndex].niveles[nivelIndex][field] = value;
+function updateNivelField(ci, ni, f, v) {
+  if (criterios[ci] && criterios[ci].niveles[ni]) {
+    criterios[ci].niveles[ni][f] = v;
+  }
 }
 
 async function loadRubricas() {
-  const tbody = document.getElementById('rubricas-tbody');
+  const tbody = $('rubricas-tbody');
+
   try {
-    const data = await fetch(`${API}/rubricas`).then(r => r.json());
+    const data = await apiGet('/rubricas');
+
+    if (!tbody) return;
+
     if (!Array.isArray(data) || !data.length) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Sin rúbricas creadas</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">
+            Sin rúbricas creadas
+          </td>
+        </tr>`;
       return;
     }
-    tbody.innerHTML = data.map(r => `
+
+    tbody.innerHTML = data.map((r) => `
       <tr>
         <td class="td-name">
           <div>${escapeHtml(r.Nombre)}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${escapeHtml(r.Descripcion || 'Sin descripcion')}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            ${escapeHtml(r.Descripcion || 'Sin descripción')}
+          </div>
         </td>
         <td>${escapeHtml(r.NombreProfesor || 'Admin')}</td>
         <td>
           <span class="badge badge-blue">${r.TotalCriterios || 0} criterios</span>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">${r.TotalNiveles || 0} niveles · ${r.PuntajeMaximo || 0} pts max.</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px">
+            ${r.TotalNiveles || 0} niveles · ${r.PuntajeMaximo || 0} pts max.
+          </div>
         </td>
-        <td>${r.Activa
-          ? '<span class="badge badge-green">Activa</span>'
-          : '<span class="badge badge-gray">Inactiva</span>'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteRubrica(${r.RubricaID})">Eliminar</button></td>
-      </tr>`).join('');
+        <td>
+          ${r.Activa
+            ? '<span class="badge badge-green">Activa</span>'
+            : '<span class="badge badge-gray">Inactiva</span>'}
+        </td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="deleteRubrica(${r.RubricaID})">Eliminar</button>
+        </td>
+      </tr>
+    `).join('');
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);padding:16px">Error</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);padding:16px">Error</td></tr>`;
   }
 }
 
 async function saveRubrica() {
   const body = {
-    Nombre: document.getElementById('rub-nombre').value.trim(),
-    Descripcion: document.getElementById('rub-desc').value.trim(),
-    ProfesorID: user ? user.id : 1,
-    criterios: criterios.map((criterio, criterioIndex) => ({
-      nombre: (criterio.nombre || '').trim(),
-      descripcion: (criterio.descripcion || '').trim(),
-      orden: criterioIndex + 1,
-      niveles: (criterio.niveles || []).map((nivel, nivelIndex) => ({
-        nombre: (nivel.nombre || '').trim(),
-        puntaje: Number(nivel.puntaje),
-        descripcion: (nivel.descripcion || '').trim(),
-        orden: nivelIndex + 1,
+    Nombre: $('rub-nombre')?.value?.trim(),
+    Descripcion: $('rub-desc')?.value?.trim(),
+    ProfesorID: user ? user.UsuarioID : 1,
+    criterios: criterios.map((c, ci) => ({
+      nombre: (c.nombre || '').trim(),
+      descripcion: (c.descripcion || '').trim(),
+      orden: ci + 1,
+      niveles: (c.niveles || []).map((n, ni) => ({
+        nombre: (n.nombre || '').trim(),
+        puntaje: Number(n.puntaje),
+        descripcion: (n.descripcion || '').trim(),
+        orden: ni + 1,
       })),
     })),
   };
 
-  if (!body.Nombre) {
-    return toast('Ingresa nombre de rúbrica', 'red');
-  }
+  if (!body.Nombre) return toast('Ingresa nombre de rúbrica', 'red');
+  if (!body.criterios.length) return toast('Agrega al menos un criterio', 'red');
 
-  if (!body.criterios.length) {
-    return toast('Agrega al menos un criterio', 'red');
-  }
+  for (const c of body.criterios) {
+    if (!c.nombre) return toast('Todos los criterios deben tener nombre', 'red');
 
-  for (const criterio of body.criterios) {
-    if (!criterio.nombre) {
-      return toast('Todos los criterios deben tener nombre', 'red');
+    if (!Array.isArray(c.niveles) || c.niveles.length !== 4) {
+      return toast(`El criterio "${c.nombre}" debe tener 4 niveles`, 'red');
     }
 
-    if (!Array.isArray(criterio.niveles) || criterio.niveles.length !== 4) {
-      return toast(`El criterio "${criterio.nombre}" debe tener 4 niveles`, 'red');
-    }
-
-    for (const nivel of criterio.niveles) {
-      if (!nivel.nombre || !nivel.descripcion || Number.isNaN(nivel.puntaje) || nivel.puntaje < 0) {
-        return toast(`Revisa los niveles del criterio "${criterio.nombre}"`, 'red');
+    for (const n of c.niveles) {
+      if (!n.nombre || !n.descripcion || Number.isNaN(n.puntaje) || n.puntaje < 0) {
+        return toast(`Revisa los niveles del criterio "${c.nombre}"`, 'red');
       }
     }
   }
 
   try {
-    const response = await fetch(`${API}/rubricas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      return toast(data.message || 'Error al guardar la rúbrica', 'red');
-    }
-
+    await apiSend('/rubricas', 'POST', body);
     closeModal('modal-rubrica');
     resetRubricaForm();
     toast('Rúbrica creada');
     loadRubricas();
   } catch (e) {
-    toast('Error', 'red');
+    toast(e.message || 'Error al guardar la rúbrica', 'red');
   }
 }
 
 async function deleteRubrica(id) {
   if (!confirm('¿Eliminar esta rúbrica?')) return;
+
   try {
-    const response = await fetch(`${API}/rubricas/${id}`, { method: 'DELETE' });
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      return toast(data.message || 'No fue posible eliminar la rúbrica', 'red');
-    }
-
+    await apiSend(`/rubricas/${id}`, 'DELETE');
     toast('Rúbrica eliminada');
     loadRubricas();
   } catch (e) {
-    toast('Error', 'red');
+    toast(e.message || 'No fue posible eliminar la rúbrica', 'red');
   }
 }
 
-// ── PROYECTOS (APROBAR) ───────────────────────────────────────
+// ─────────────────────────────────────────────
+// PROYECTOS / CITAS ADMIN
+// ─────────────────────────────────────────────
+
 async function loadEventosSelect2() {
   try {
-    const data = await fetch(`${API}/eventos`).then(r => r.json());
-    document.getElementById('select-evento-proyectos').innerHTML =
-      '<option value="">Todos los eventos</option>' +
-      (Array.isArray(data) ? data.map(e => `<option value="${e.EventoID}">${e.Nombre}</option>`).join('') : '');
+    const data = await apiGet('/eventos');
+
+    if ($('select-evento-proyectos')) {
+      $('select-evento-proyectos').innerHTML =
+        '<option value="">Todos los eventos</option>' +
+        (Array.isArray(data)
+          ? data.map((e) => `<option value="${e.EventoID}">${escapeHtml(e.Nombre)}</option>`).join('')
+          : '');
+    }
   } catch (e) {}
 }
- 
+
 async function loadProyectosEvento() {
-  const eid    = document.getElementById('select-evento-proyectos').value;
-  const estado = document.getElementById('filter-estado-proyecto').value;
-  const tbody  = document.getElementById('proyectos-tbody');
+  const tbody = $('proyectos-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">
+        Cargando proyectos...
+      </td>
+    </tr>`;
+
   try {
-    let url = `${API}/eventos/proyectos`;
-    const params = [];
-    if (eid)    params.push(`eventoId=${eid}`);
-    if (estado) params.push(`estado=${estado}`);
-    if (params.length) url += '?' + params.join('&');
- 
-    const data = await fetch(url).then(r => r.json());
-    if (!Array.isArray(data) || !data.length) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Sin proyectos</td></tr>`;
+    const [proyectos, citas] = await Promise.all([
+      apiGet('/proyectos').catch(() => []),
+      apiGet('/citas').catch(() => []),
+    ]);
+
+    const data = Array.isArray(proyectos) ? proyectos : [];
+    const citasArr = Array.isArray(citas) ? citas : [];
+
+    if (!data.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">
+            Sin proyectos registrados
+          </td>
+        </tr>`;
       return;
     }
-    document.getElementById('badge-proyectos').textContent =
-      data.filter(p => p.Estado === 'pendiente').length || '';
- 
-    tbody.innerHTML = data.map(p => `
-      <tr>
-        <td class="td-name">${p.TituloProyecto || p.Titulo || '—'}</td>
-        <td>${p.NombreAlumno || '—'}</td>
-        <td>${p.NombreEvento || '—'}</td>
-        <td>${p.CreatedAt ? new Date(p.CreatedAt).toLocaleDateString('es-MX') : '—'}</td>
-        <td>${badgeEstado(p.Estado)}</td>
-        <td style="display:flex;gap:6px">
-          ${p.Estado === 'pendiente' ? `
-            <button class="btn btn-success btn-sm" onclick="cambiarEstadoProyecto(${p.EventoProyectoID},'aceptado')">Aceptar</button>
-            <button class="btn btn-danger btn-sm"  onclick="cambiarEstadoProyecto(${p.EventoProyectoID},'rechazado')">Rechazar</button>
-          ` : `<span style="font-size:12px;color:var(--text-muted)">—</span>`}
-        </td>
-      </tr>`).join('');
+
+    const estadoFiltro = $('filter-estado-proyecto')?.value || '';
+
+    const filtrados = data.filter((p) => {
+      if (!estadoFiltro) return true;
+      const estado = String(p.Estatus || p.EstadoAprobacion || p.EstadoCita || '').toLowerCase();
+      return estado === estadoFiltro.toLowerCase();
+    });
+
+    const pendientesAdmin = citasArr.filter((c) => String(c.Estado || '').toLowerCase() === 'pendiente_admin');
+    if ($('badge-proyectos')) $('badge-proyectos').textContent = pendientesAdmin.length || '';
+
+    tbody.innerHTML = filtrados.map((p) => {
+      const cita = citasArr.find((c) => Number(c.ProyectoID) === Number(p.ProyectoID));
+      const estadoCita = cita?.Estado || p.EstadoCita || p.Estatus || p.EstadoAprobacion || 'pendiente';
+
+      return `
+        <tr>
+          <td class="td-name">
+            <div>${escapeHtml(p.Titulo || p.TituloProyecto || '—')}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+              ${escapeHtml(p.Categoria || 'Sin categoría')}
+            </div>
+          </td>
+
+          <td>${escapeHtml(p.NombreAlumno || '—')}</td>
+
+          <td>
+            ${p.NombreProfesor
+              ? escapeHtml(p.NombreProfesor)
+              : '<span style="color:var(--text-muted);font-size:12px">Sin profesor elegido</span>'}
+          </td>
+
+          <td>
+            ${cita
+              ? `${formatDate(cita.Fecha)}<br><span style="font-size:11px;color:var(--text-muted)">${formatTime(cita.HoraInicio)} - ${formatTime(cita.HoraFin)} · ${escapeHtml(cita.Sala || 'Sin sala')}</span>`
+              : '<span style="color:var(--text-muted);font-size:12px">Sin cita</span>'}
+          </td>
+
+          <td>${badgeEstado(estadoCita)}</td>
+
+          <td>
+            ${cita?.CodigoQR
+              ? `<code style="font-size:11px;background:var(--surface2);padding:4px 6px;border-radius:6px">${escapeHtml(cita.CodigoQR)}</code>`
+              : '<span style="color:var(--text-muted);font-size:12px">QR no generado</span>'}
+          </td>
+
+          <td style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="verDetallesProyecto(${p.ProyectoID})">Ver</button>
+
+            ${p.EventoProyectoID && String(estadoCita).toLowerCase() === 'pendiente'
+              ? `
+                <button class="btn btn-success btn-sm" onclick="cambiarEstadoProyecto(${p.EventoProyectoID}, 'aceptado')">Aprobar</button>
+                <button class="btn btn-danger btn-sm" onclick="rechazarInscripcion(${p.EventoProyectoID})">Rechazar</button>
+              `
+              : ''}
+
+            ${cita && String(cita.Estado).toLowerCase() === 'pendiente_admin'
+              ? `
+                <button class="btn btn-success btn-sm" onclick="aprobarCita(${cita.CitaID})">Aprobar cita</button>
+                <button class="btn btn-danger btn-sm" onclick="rechazarCita(${cita.CitaID})">Rechazar cita</button>
+              `
+              : ''}
+
+            ${cita && String(cita.Estado).toLowerCase() === 'aprobada'
+              ? `<button class="btn btn-ghost btn-sm" onclick="copiarQR('${escapeHtml(cita.CodigoQR)}')">Copiar QR</button>`
+              : ''}
+          </td>
+        </tr>`;
+    }).join('');
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:16px">Error al cargar</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:16px">Error al cargar proyectos</td></tr>`;
   }
 }
- 
-async function cambiarEstadoProyecto(epId, estado) {
+
+async function loadCitasAdmin() {
+  return cargarCitasAdmin();
+}
+
+async function cargarCitasAdmin() {
+  const tbody = $('citas-tbody') || $('admin-citas-tbody') || $('proyectos-citas-tbody');
+
+  if (!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">
+        Cargando citas...
+      </td>
+    </tr>`;
+
   try {
-    await fetch(`${API}/eventos/proyectos/${epId}/estado`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ Estado: estado }),
-    });
-    toast(estado === 'aceptado' ? 'Proyecto aceptado ✓' : 'Proyecto rechazado',
-          estado === 'aceptado' ? 'green' : 'red');
-    loadProyectosEvento();
+    const data = await apiGet('/citas');
+    const citas = Array.isArray(data) ? data : [];
+
+    if (!citas.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align:center;padding:24px;color:var(--text-muted)">
+            No hay citas registradas todavía
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = citas.map((c) => `
+      <tr>
+        <td class="td-name">
+          <div>${escapeHtml(c.Titulo || c.TituloProyecto || '—')}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            ${escapeHtml(c.Categoria || 'Sin categoría')}
+          </div>
+        </td>
+
+        <td>
+          <div>${escapeHtml(c.NombreAlumno || '—')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(c.EmailAlumno || '')}</div>
+        </td>
+
+        <td>
+          <div>${escapeHtml(c.NombreProfesor || '—')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(c.EmailProfesor || '')}</div>
+        </td>
+
+        <td>${formatDate(c.Fecha)}</td>
+
+        <td>${formatTime(c.HoraInicio)} - ${formatTime(c.HoraFin)}</td>
+
+        <td>${escapeHtml(c.Sala || 'Sin sala')}</td>
+
+        <td>${badgeEstado(c.Estado)}</td>
+
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="verDetallesProyecto(${c.ProyectoID})">Ver</button>
+
+          ${String(c.Estado || '').toLowerCase() === 'pendiente_admin'
+            ? `
+              <button class="btn btn-success btn-sm" onclick="aprobarCita(${c.CitaID})">Aprobar</button>
+              <button class="btn btn-danger btn-sm" onclick="rechazarCita(${c.CitaID})">Rechazar</button>
+            `
+            : ''}
+
+          ${c.CodigoQR
+            ? `<button class="btn btn-ghost btn-sm" onclick="copiarQR('${escapeHtml(c.CodigoQR)}')">QR</button>`
+            : ''}
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8" style="color:var(--red);padding:16px">Error al cargar citas</td></tr>`;
+  }
+}
+
+async function aprobarCita(citaId) {
+  const ComentarioAdmin = prompt('Comentario para aprobar la cita (opcional):') || '';
+
+  try {
+    const data = await apiSend(`/citas/${citaId}/aprobar`, 'PUT', { ComentarioAdmin });
+
+    toast(data?.CodigoQR ? `Cita aprobada. QR: ${data.CodigoQR}` : 'Cita aprobada. QR habilitado.');
+
     loadDashboard();
-  } catch (e) { toast('Error', 'red'); }
+    loadProyectosEvento();
+    cargarCitasAdmin();
+  } catch (e) {
+    toast(e.message || 'Error al aprobar cita', 'red');
+  }
 }
- 
-// ── EVALUADORES ───────────────────────────────────────────────
-async function loadEventosSelectEval() {
-  try {
-    const data = await fetch(`${API}/eventos`).then(r => r.json());
-    document.getElementById('select-evento-eval').innerHTML =
-      '<option value="">Seleccionar evento...</option>' +
-      (Array.isArray(data) ? data.map(e => `<option value="${e.EventoID}">${e.Nombre}</option>`).join('') : '');
-  } catch (e) {}
-}
- 
-async function loadProyectosEval() {
-  const eid   = document.getElementById('select-evento-eval').value;
-  const tbody = document.getElementById('evaluadores-tbody');
-  if (!eid) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Selecciona un evento</td></tr>`;
+
+async function rechazarCita(citaId) {
+  const ComentarioAdmin = prompt('Motivo de rechazo:') || '';
+
+  if (!ComentarioAdmin.trim()) {
+    toast('Debes escribir un motivo de rechazo', 'red');
     return;
   }
+
   try {
-    const data = await fetch(`${API}/eventos/${eid}/proyectos/aceptados`).then(r => r.json());
+    await apiSend(`/citas/${citaId}/rechazar`, 'PUT', { ComentarioAdmin });
+
+    toast('Cita rechazada', 'red');
+
+    loadDashboard();
+    loadProyectosEvento();
+    cargarCitasAdmin();
+  } catch (e) {
+    toast(e.message || 'Error al rechazar cita', 'red');
+  }
+}
+
+async function cambiarEstadoProyecto(epId, estado) {
+  try {
+    await apiSend(`/eventos/proyectos/${epId}/estado`, 'PUT', { Estado: estado });
+
+    toast(
+      estado === 'aceptado' ? 'Proyecto aceptado ✓' : 'Proyecto rechazado',
+      estado === 'aceptado' ? 'green' : 'red'
+    );
+
+    loadProyectosEvento();
+    loadDashboard();
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
+}
+
+async function rechazarInscripcion(epId) {
+  const comentario = prompt('Motivo del rechazo (opcional):') || '';
+  try {
+    await apiSend(`/eventos/proyectos/${epId}/estado`, 'PUT', {
+      Estado: 'rechazado',
+      ComentarioAdmin: comentario,
+    });
+    toast('Inscripción rechazada', 'red');
+    loadProyectosEvento();
+    loadDashboard();
+  } catch (e) {
+    toast(e.message || 'Error al rechazar', 'red');
+  }
+}
+
+function copiarQR(codigo) {
+  if (!codigo) {
+    toast('No hay código QR disponible', 'red');
+    return;
+  }
+
+  navigator.clipboard
+    .writeText(codigo)
+    .then(() => toast('Código QR copiado'))
+    .catch(() => {
+      prompt('Copia el código QR:', codigo);
+    });
+}
+
+// ─────────────────────────────────────────────
+// EVALUADORES
+// ─────────────────────────────────────────────
+
+async function loadEventosSelectEval() {
+  try {
+    const data = await apiGet('/eventos');
+
+    if ($('select-evento-eval')) {
+      $('select-evento-eval').innerHTML =
+        '<option value="">Seleccionar evento...</option>' +
+        (Array.isArray(data)
+          ? data.map((e) => `<option value="${e.EventoID}">${escapeHtml(e.Nombre)}</option>`).join('')
+          : '');
+    }
+  } catch (e) {}
+}
+
+async function loadProyectosEval() {
+  const eid = $('select-evento-eval')?.value;
+  const tbody = $('evaluadores-tbody');
+
+  if (!tbody) return;
+
+  if (!eid) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">
+          Selecciona un evento
+        </td>
+      </tr>`;
+    return;
+  }
+
+  try {
+    const data = await apiGet(`/eventos/${eid}/proyectos/aceptados`);
+
     if (!Array.isArray(data) || !data.length) {
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Sin proyectos aceptados en este evento</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">
+            Sin proyectos aceptados en este evento
+          </td>
+        </tr>`;
       return;
     }
-    tbody.innerHTML = data.map(p => `
+
+    tbody.innerHTML = data.map((p) => `
       <tr>
-        <td class="td-name">${p.TituloProyecto || p.Titulo || '—'}</td>
-        <td>${p.NombreAula ? `${p.NombreAula} · ${p.HoraInicio || ''}–${p.HoraFin || ''}` : 'Sin asignar'}</td>
-        <td>${p.Evaluadores
-          ? p.Evaluadores.split(',').map(e => `<span class="badge badge-blue" style="margin-right:4px">${e}</span>`).join('')
-          : '<span style="color:var(--text-muted);font-size:12px">Sin asignar</span>'}</td>
-        <td><button class="btn btn-primary btn-sm" onclick="openAsignarEval(${p.EventoProyectoID},'${(p.TituloProyecto || '').replace(/'/g, "\\'")}')">Asignar</button></td>
-      </tr>`).join('');
+        <td class="td-name">${escapeHtml(p.TituloProyecto || p.Titulo || '—')}</td>
+        <td>
+          ${p.NombreAula
+            ? `${escapeHtml(p.NombreAula)} · ${formatTime(p.HoraInicio)}–${formatTime(p.HoraFin)}`
+            : 'Sin asignar'}
+        </td>
+        <td>
+          ${p.Evaluadores
+            ? p.Evaluadores.split(',').map((e) => `<span class="badge badge-blue" style="margin-right:4px">${escapeHtml(e)}</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:12px">Sin asignar</span>'}
+        </td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="openAsignarEval(${p.EventoProyectoID},'${escapeHtml(p.TituloProyecto || p.Titulo || '')}')">
+            Asignar
+          </button>
+        </td>
+      </tr>
+    `).join('');
   } catch (e) {
     tbody.innerHTML = `<tr><td colspan="4" style="color:var(--red);padding:16px">Error</td></tr>`;
   }
 }
- 
+
 let selectedProfesores = [];
- 
+
 async function openAsignarEval(epId, titulo) {
-  document.getElementById('eval-ep-id').value = epId;
-  document.getElementById('modal-eval-title').textContent = `Evaluadores — ${titulo}`;
+  if ($('eval-ep-id')) $('eval-ep-id').value = epId;
+  if ($('modal-eval-title')) $('modal-eval-title').textContent = `Evaluadores — ${titulo}`;
+
   selectedProfesores = [];
-  const list = document.getElementById('profesores-eval-list');
-  list.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando profesores...</div>';
+
+  const list = $('profesores-eval-list');
+  if (list) list.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando profesores...</div>';
+
   openModal('modal-evaluadores');
+
   try {
-    const data = await fetch(`${API}/usuarios?rol=Profesor`).then(r => r.json());
+    const data = await apiGet('/usuarios?rol=Profesor');
+
+    if (!list) return;
+
     if (!Array.isArray(data) || !data.length) {
       list.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Sin profesores registrados</div>';
       return;
     }
-    list.innerHTML = data.map(p => `
-      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;cursor:pointer;border:1.5px solid var(--border);transition:border-color .15s"
-        onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+
+    list.innerHTML = data.map((p) => `
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;cursor:pointer;border:1.5px solid var(--border)">
         <input type="checkbox" value="${p.UsuarioID}" onchange="toggleProfesorEval(this,${p.UsuarioID})" style="accent-color:var(--blue)">
         <div>
-          <div style="font-size:13px;font-weight:500;color:var(--text)">${p.Nombre}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${p.Email}</div>
+          <div style="font-size:13px;font-weight:500;color:var(--text)">${escapeHtml(p.Nombre)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(p.Email)}</div>
         </div>
-      </label>`).join('');
+      </label>
+    `).join('');
   } catch (e) {
-    list.innerHTML = '<div style="color:var(--red);font-size:13px">Error</div>';
+    if (list) list.innerHTML = '<div style="color:var(--red);font-size:13px">Error</div>';
   }
 }
- 
+
 function toggleProfesorEval(el, id) {
   if (el.checked) {
     if (selectedProfesores.length >= 3) {
       el.checked = false;
-      return toast('Máximo 3 evaluadores por proyecto', 'red');
+      toast('Máximo 3 evaluadores por proyecto', 'red');
+      return;
     }
+
     selectedProfesores.push(id);
   } else {
-    selectedProfesores = selectedProfesores.filter(x => x !== id);
+    selectedProfesores = selectedProfesores.filter((x) => x !== id);
   }
 }
- 
+
 async function saveEvaluadores() {
-  const epId = document.getElementById('eval-ep-id').value;
-  if (!selectedProfesores.length) return toast('Selecciona al menos un profesor', 'red');
+  const epId = $('eval-ep-id')?.value;
+
+  if (!selectedProfesores.length) {
+    toast('Selecciona al menos un profesor', 'red');
+    return;
+  }
+
   try {
-    await fetch(`${API}/eventos/proyectos/${epId}/evaluadores`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profesores: selectedProfesores }),
+    await apiSend(`/eventos/proyectos/${epId}/evaluadores`, 'POST', {
+      profesores: selectedProfesores,
     });
+
     closeModal('modal-evaluadores');
     toast('Evaluadores asignados ✓');
     loadProyectosEval();
-  } catch (e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
 }
 
-// ── GESTIÓN DE PROYECTOS ──────────────────────────────────────────
+// ─────────────────────────────────────────────
+// GESTIÓN DE PROYECTOS
+// ─────────────────────────────────────────────
 
 let allProyectos = [];
 
 async function loadGestionProyectos() {
-  document.getElementById('gp-tbody').innerHTML =
-    `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr>`;
+  const tbody = $('gp-tbody');
+
+  if (tbody) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">
+          Cargando...
+        </td>
+      </tr>`;
+  }
+
   try {
-    const data = await fetch(`${API}/proyectos`).then(r => r.json());
+    const data = await apiGet('/proyectos');
     allProyectos = Array.isArray(data) ? data : [];
     renderGP();
     renderGPStats();
-  } catch(e) {
-    document.getElementById('gp-tbody').innerHTML =
-      `<tr><td colspan="6" style="color:var(--red);padding:16px">Error al cargar proyectos</td></tr>`;
+  } catch (e) {
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:16px">Error al cargar proyectos</td></tr>`;
+    }
   }
 }
 
 function renderGPStats() {
+  const box = $('gp-stats');
+  if (!box) return;
+
   const total = allProyectos.length;
-  const pend  = allProyectos.filter(p => p.Estatus === 'Pendiente').length;
-  const prog  = allProyectos.filter(p => p.Estatus === 'En progreso').length;
-  const comp  = allProyectos.filter(p => p.Estatus === 'Completado').length;
-  document.getElementById('gp-stats').innerHTML = [
-    ['Total',       total, 'var(--blue)',   'Proyectos registrados'],
-    ['Pendientes',  pend,  'var(--orange)', 'Sin iniciar'],
-    ['En progreso', prog,  'var(--blue)',   'Activos'],
-    ['Completados', comp,  'var(--green)',  'Finalizados'],
+
+  const buscando = allProyectos.filter((p) => String(p.Estatus || '').toLowerCase() === 'buscando_profesor').length;
+  const pendiente = allProyectos.filter((p) => String(p.Estatus || '').toLowerCase() === 'pendiente_admin').length;
+  const aprobado = allProyectos.filter((p) => String(p.Estatus || '').toLowerCase() === 'aprobado').length;
+  const evaluado = allProyectos.filter((p) => String(p.Estatus || '').toLowerCase() === 'evaluado').length;
+
+  box.innerHTML = [
+    ['Total', total, 'var(--blue)', 'Proyectos registrados'],
+    ['Buscando profesor', buscando, 'var(--orange)', 'Aún sin cita'],
+    ['Pendiente admin', pendiente, 'var(--orange)', 'Esperando aprobación'],
+    ['Aprobados', aprobado, 'var(--green)', 'QR habilitado'],
+    ['Evaluados', evaluado, 'var(--blue)', 'Con calificación'],
   ].map(([label, val, color, sub]) => `
     <div class="stat-card" style="--card-color:${color}">
       <div class="stat-label">${label}</div>
       <div class="stat-value">${val}</div>
       <div class="stat-sub">${sub}</div>
-    </div>`).join('');
+    </div>
+  `).join('');
 }
 
 function filterGP(q) {
-  const f = allProyectos.filter(p =>
-    p.Titulo.toLowerCase().includes(q.toLowerCase()) ||
-    (p.NombreAlumno || '').toLowerCase().includes(q.toLowerCase())
+  const query = String(q || '').toLowerCase();
+
+  const f = allProyectos.filter((p) =>
+    String(p.Titulo || '').toLowerCase().includes(query) ||
+    String(p.NombreAlumno || '').toLowerCase().includes(query) ||
+    String(p.NombreProfesor || '').toLowerCase().includes(query)
   );
-  const estatus = document.getElementById('gp-filter-estatus').value;
-  renderGPList(estatus ? f.filter(p => p.Estatus === estatus) : f);
+
+  const estatus = $('gp-filter-estatus')?.value;
+  renderGPList(estatus ? f.filter((p) => p.Estatus === estatus) : f);
 }
 
 function renderGP() {
-  const estatus  = document.getElementById('gp-filter-estatus').value;
-  const filtered = estatus ? allProyectos.filter(p => p.Estatus === estatus) : allProyectos;
-  renderGPList(filtered);
+  const estatus = $('gp-filter-estatus')?.value;
+  renderGPList(estatus ? allProyectos.filter((p) => p.Estatus === estatus) : allProyectos);
 }
 
 function renderGPList(list) {
-  const tbody = document.getElementById('gp-tbody');
+  const tbody = $('gp-tbody');
+  if (!tbody) return;
+
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted)">No hay proyectos</td></tr>`;
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted)">
+          No hay proyectos
+        </td>
+      </tr>`;
     return;
   }
-  const colors = { 'Pendiente':'badge-orange', 'En progreso':'badge-blue', 'Completado':'badge-green' };
-  tbody.innerHTML = list.map(p => {
-    const pct      = p.Progreso || 0;
-    const barColor = pct === 100 ? 'var(--green)' : pct > 0 ? 'var(--blue)' : 'var(--border)';
-    return `<tr>
-      <td class="td-name">${p.Titulo}</td>
-      <td>${p.NombreAlumno   || '<span style="color:var(--text-muted)">Sin asignar</span>'}</td>
-      <td>${p.NombreProfesor || '<span style="color:var(--text-muted)">Sin asignar</span>'}</td>
-      <td style="min-width:120px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
-            <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .4s"></div>
+
+  tbody.innerHTML = list.map((p) => {
+    const pct = Number(p.Progreso || 0);
+    const barColor = pct >= 100 ? 'var(--green)' : pct > 0 ? 'var(--blue)' : 'var(--border)';
+
+    return `
+      <tr>
+        <td class="td-name">
+          <div>${escapeHtml(p.Titulo || '—')}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${escapeHtml(p.Categoria || 'Sin categoría')}</div>
+        </td>
+
+        <td>${escapeHtml(p.NombreAlumno || 'Sin asignar')}</td>
+
+        <td>${escapeHtml(p.NombreProfesor || 'Sin profesor')}</td>
+
+        <td>
+          ${p.FechaCita
+            ? `${formatDate(p.FechaCita)} · ${formatTime(p.HoraCita)} · ${escapeHtml(p.SalaCita || 'Sin sala')}`
+            : '<span style="color:var(--text-muted);font-size:12px">Sin cita</span>'}
+        </td>
+
+        <td style="min-width:120px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .4s"></div>
+            </div>
+            <span style="font-size:11px;color:var(--text-muted);min-width:28px">${pct}%</span>
           </div>
-          <span style="font-size:11px;color:var(--text-muted);min-width:28px">${pct}%</span>
-        </div>
-      </td>
-      <td><span class="badge ${colors[p.Estatus] || 'badge-gray'}">${p.Estatus}</span></td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-primary btn-sm" onclick="verDetallesProyecto(${p.ProyectoID})">Ver</button>
-        <button class="btn btn-ghost btn-sm" onclick="editProyecto(${JSON.stringify(p).replace(/"/g,'&quot;')})">Editar</button>
-        <button class="btn btn-ghost btn-sm" onclick="openEtapas(${p.ProyectoID},'${p.Titulo.replace(/'/g,"\\'")}')">Etapas</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteProyecto(${p.ProyectoID},'${p.Titulo.replace(/'/g,"\\'")}')">Eliminar</button>
-      </td>
-    </tr>`;
+        </td>
+
+        <td>${badgeEstado(p.Estatus || p.EstadoAprobacion || p.EstadoCita)}</td>
+
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="verDetallesProyecto(${p.ProyectoID})">Ver</button>
+          <button class="btn btn-ghost btn-sm" onclick="editProyecto(${safeJsonForOnclick(p)})">Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="abrirEtapasProyecto(${p.ProyectoID},'${escapeHtml(p.Titulo || '')}')">Etapas</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteProyecto(${p.ProyectoID},'${escapeHtml(p.Titulo || '')}')">Eliminar</button>
+        </td>
+      </tr>`;
   }).join('');
 }
 
 async function openModalNuevoProyecto() {
-  document.getElementById('modal-proyecto-title').textContent = 'Nuevo proyecto';
-  document.getElementById('proy-id').value      = '';
-  document.getElementById('proy-titulo').value  = '';
-  document.getElementById('proy-desc').value    = '';
-  document.getElementById('proy-inicio').value  = '';
-  document.getElementById('proy-fin').value     = '';
+  if ($('modal-proyecto-title')) $('modal-proyecto-title').textContent = 'Nuevo proyecto';
+  if ($('proy-id')) $('proy-id').value = '';
+  if ($('proy-titulo')) $('proy-titulo').value = '';
+  if ($('proy-desc')) $('proy-desc').value = '';
+  if ($('proy-categoria')) $('proy-categoria').value = '';
+  if ($('proy-inicio')) $('proy-inicio').value = '';
+  if ($('proy-fin')) $('proy-fin').value = '';
+
   await loadUsuariosSelect();
   openModal('modal-proyecto');
 }
 
 async function loadUsuariosSelect() {
   try {
-    const data      = await fetch(`${API}/usuarios`).then(r => r.json());
-    const alumnos   = data.filter(u => u.Rol === 'Alumno'   && u.Activo);
-    const profesores = data.filter(u => u.Rol === 'Profesor' && u.Activo);
-    document.getElementById('proy-alumno').innerHTML =
-      '<option value="">Seleccionar alumno...</option>' +
-      alumnos.map(u => `<option value="${u.UsuarioID}">${u.Nombre}</option>`).join('');
-    document.getElementById('proy-profesor').innerHTML =
-      '<option value="">Sin asignar</option>' +
-      profesores.map(u => `<option value="${u.UsuarioID}">${u.Nombre}</option>`).join('');
-  } catch(e) {}
+    const data = await apiGet('/usuarios');
+
+    const alumnos = data.filter((u) => u.Rol === 'Alumno' && u.Activo);
+    const profesores = data.filter((u) => u.Rol === 'Profesor' && u.Activo);
+
+    if ($('proy-alumno')) {
+      $('proy-alumno').innerHTML =
+        '<option value="">Seleccionar alumno...</option>' +
+        alumnos.map((u) => `<option value="${u.UsuarioID}">${escapeHtml(u.Nombre)}</option>`).join('');
+    }
+
+    if ($('proy-profesor')) {
+      $('proy-profesor').innerHTML =
+        '<option value="">Sin asignar</option>' +
+        profesores.map((u) => `<option value="${u.UsuarioID}">${escapeHtml(u.Nombre)}</option>`).join('');
+    }
+  } catch (e) {}
 }
 
 function editProyecto(p) {
-  document.getElementById('modal-proyecto-title').textContent = 'Editar proyecto';
-  document.getElementById('proy-id').value     = p.ProyectoID;
-  document.getElementById('proy-titulo').value = p.Titulo;
-  document.getElementById('proy-desc').value   = p.Descripcion || '';
-  document.getElementById('proy-inicio').value = p.FechaInicio?.split('T')[0] || '';
-  document.getElementById('proy-fin').value    = p.FechaFin?.split('T')[0]    || '';
+  if ($('modal-proyecto-title')) $('modal-proyecto-title').textContent = 'Editar proyecto';
+  if ($('proy-id')) $('proy-id').value = p.ProyectoID;
+  if ($('proy-titulo')) $('proy-titulo').value = p.Titulo || '';
+  if ($('proy-desc')) $('proy-desc').value = p.Descripcion || '';
+  if ($('proy-categoria')) $('proy-categoria').value = p.Categoria || '';
+  if ($('proy-inicio')) $('proy-inicio').value = p.FechaInicio?.split('T')[0] || '';
+  if ($('proy-fin')) $('proy-fin').value = p.FechaFin?.split('T')[0] || '';
+
   loadUsuariosSelect().then(() => {
-    document.getElementById('proy-alumno').value   = p.AlumnoID   || '';
-    document.getElementById('proy-profesor').value = p.ProfesorID || '';
+    if ($('proy-alumno')) $('proy-alumno').value = p.AlumnoID || '';
+    if ($('proy-profesor')) $('proy-profesor').value = p.ProfesorID || '';
   });
+
   openModal('modal-proyecto');
 }
 
 async function saveProyecto() {
-  const id   = document.getElementById('proy-id').value;
+  const id = $('proy-id')?.value;
+  const btn = $('btn-save-proyecto');
+
   const body = {
-    Titulo:      document.getElementById('proy-titulo').value.trim(),
-    Descripcion: document.getElementById('proy-desc').value.trim(),
-    FechaInicio: document.getElementById('proy-inicio').value,
-    FechaFin:    document.getElementById('proy-fin').value || undefined,
-    AlumnoID:    document.getElementById('proy-alumno').value,
-    ProfesorID:  document.getElementById('proy-profesor').value || undefined,
+    Titulo: $('proy-titulo')?.value?.trim(),
+    Descripcion: $('proy-desc')?.value?.trim(),
+    Categoria: $('proy-categoria')?.value?.trim(),
+    FechaInicio: $('proy-inicio')?.value,
+    FechaFin: $('proy-fin')?.value || undefined,
+    AlumnoID: $('proy-alumno')?.value,
+    ProfesorID: $('proy-profesor')?.value || undefined,
   };
-  if (!body.Titulo)      return toast('El título es obligatorio', 'red');
+
+  if (!body.Titulo) return toast('El título es obligatorio', 'red');
+  if (!body.Categoria) return toast('La categoria es obligatoria', 'red');
   if (!body.FechaInicio) return toast('La fecha de inicio es obligatoria', 'red');
-  if (!body.AlumnoID)    return toast('Selecciona un alumno', 'red');
+  if (!body.AlumnoID) return toast('Selecciona un alumno', 'red');
+
   try {
-    if (id) {
-      await fetch(`${API}/proyectos/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-      await fetch(`${API}/proyectos/${id}/asignar-profesor`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ ProfesorID: body.ProfesorID || null }) });
-    } else {
-      await fetch(`${API}/proyectos`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
     }
+
+    if (id) {
+      await apiSend(`/proyectos/${id}`, 'PUT', body);
+
+      if (body.ProfesorID) {
+        await apiSend(`/proyectos/${id}/asignar-profesor`, 'PUT', {
+          ProfesorID: body.ProfesorID,
+        }).catch(() => null);
+      }
+    } else {
+      await apiSend('/proyectos', 'POST', body);
+    }
+
     closeModal('modal-proyecto');
     toast(id ? 'Proyecto actualizado ✓' : 'Proyecto creado ✓');
     loadGestionProyectos();
-  } catch(e) { toast('Error al guardar', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error al guardar', 'red');
+  }
 }
 
 async function deleteProyecto(id, titulo) {
   if (!confirm(`¿Eliminar el proyecto "${titulo}"?`)) return;
+
   try {
-    await fetch(`${API}/proyectos/${id}`, { method:'DELETE' });
+    await apiSend(`/proyectos/${id}`, 'DELETE');
     toast('Proyecto eliminado');
     loadGestionProyectos();
-  } catch(e) { toast('Error', 'red'); }
-}
-
-// ── ETAPAS ────────────────────────────────────────────────────
-
-async function openEtapas(proyectoId, titulo) {
-  document.getElementById('etapas-proy-id').value            = proyectoId;
-  document.getElementById('modal-etapas-title').textContent  = `Etapas — ${titulo}`;
-  document.getElementById('nueva-etapa-nombre').value = '';
-  document.getElementById('nueva-etapa-desc').value   = '';
-  document.getElementById('nueva-etapa-fecha').value  = '';
-  openModal('modal-etapas');
-  await loadEtapas(proyectoId);
-}
-
-async function loadEtapas(proyectoId) {
-  const list = document.getElementById('etapas-list');
-  list.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando...</div>';
-  try {
-    const data = await fetch(`${API}/proyectos/${proyectoId}/etapas`).then(r => r.json());
-    if (!Array.isArray(data) || !data.length) {
-      list.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Sin etapas. Agrega la primera abajo.</div>';
-      return;
-    }
-    list.innerHTML = data.map(e => `
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:9px;border:1px solid var(--border)">
-        <input type="checkbox" ${e.Completada ? 'checked' : ''}
-          onchange="toggleEtapa(${e.EtapaID},this.checked,${proyectoId})"
-          style="width:16px;height:16px;accent-color:var(--green);flex-shrink:0;cursor:pointer">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:500;color:${e.Completada ? 'var(--text-muted)' : 'var(--text)'};text-decoration:${e.Completada ? 'line-through' : 'none'}">${e.Nombre}</div>
-          ${e.Descripcion ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${e.Descripcion}</div>` : ''}
-          ${e.FechaFin    ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">📅 Límite: ${new Date(e.FechaFin).toLocaleDateString('es-MX')}</div>` : ''}
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteEtapa(${e.EtapaID},${proyectoId})">✕</button>
-      </div>`).join('');
-  } catch(e) {
-    list.innerHTML = '<div style="color:var(--red);font-size:13px">Error al cargar</div>';
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
   }
 }
 
-async function toggleEtapa(etapaId, completada, proyectoId) {
+async function abrirEtapasProyecto(proyectoId, titulo = 'Proyecto') {
+  if ($('etapas-proy-id')) $('etapas-proy-id').value = proyectoId;
+  if ($('modal-etapas-title')) $('modal-etapas-title').textContent = `Etapas — ${titulo}`;
+  if ($('nueva-etapa-nombre')) $('nueva-etapa-nombre').value = '';
+  if ($('nueva-etapa-desc')) $('nueva-etapa-desc').value = '';
+  if ($('nueva-etapa-fecha')) $('nueva-etapa-fecha').value = '';
+
+  openModal('modal-etapas');
+  await cargarEtapasProyecto(proyectoId);
+}
+
+async function cargarEtapasProyecto(proyectoId) {
+  const list = $('etapas-list');
+  if (!list) return;
+
+  list.innerHTML = '<div class="empty-text padded">Cargando etapas...</div>';
+
   try {
-    const res  = await fetch(`${API}/etapas/${etapaId}`, {
-      method:'PUT', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ Completada: completada })
-    });
-    const data = await res.json();
-    toast(`Progreso: ${data.progreso}%`);
-    loadEtapas(proyectoId);
-    loadGestionProyectos();
-  } catch(e) { toast('Error', 'red'); }
+    const etapas = await apiGet(`/proyectos/${proyectoId}/etapas`);
+
+    if (!Array.isArray(etapas) || !etapas.length) {
+      list.innerHTML = '<div class="empty-text padded">Este proyecto todavía no tiene etapas.</div>';
+      return;
+    }
+
+    list.innerHTML = etapas.map((etapa) => `
+      <div class="stage-row ${etapa.Completada ? 'done' : ''}">
+        <div class="stage-check">${etapa.Completada ? '✓' : ''}</div>
+        <div class="stage-main">
+          <div class="stage-title">${escapeHtml(etapa.Nombre || 'Etapa')}</div>
+          <div class="stage-meta">
+            ${etapa.Descripcion ? escapeHtml(etapa.Descripcion) : 'Sin descripción'}
+            ${etapa.FechaFin ? ` · Fecha límite: ${formatDate(etapa.FechaFin)}` : ''}
+          </div>
+        </div>
+        <span class="badge ${etapa.Completada ? 'badge-green' : 'badge-orange'}">
+          ${etapa.Completada ? 'Completada' : 'Pendiente'}
+        </span>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="empty-text padded error">No se pudieron cargar las etapas.</div>';
+  }
 }
 
 async function agregarEtapa() {
-  const proyectoId = document.getElementById('etapas-proy-id').value;
-  const body = {
-    Nombre:      document.getElementById('nueva-etapa-nombre').value.trim(),
-    Descripcion: document.getElementById('nueva-etapa-desc').value.trim(),
-    FechaFin:    document.getElementById('nueva-etapa-fecha').value || undefined,
-  };
-  if (!body.Nombre) return toast('Escribe el nombre de la etapa', 'red');
+  const proyectoId = $('etapas-proy-id')?.value;
+  const Nombre = $('nueva-etapa-nombre')?.value?.trim();
+  const Descripcion = $('nueva-etapa-desc')?.value?.trim();
+  const FechaFin = $('nueva-etapa-fecha')?.value;
+
+  if (!proyectoId) return toast('No hay proyecto seleccionado', 'red');
+  if (!Nombre) return toast('El nombre de la etapa es obligatorio', 'red');
+
   try {
-    await fetch(`${API}/proyectos/${proyectoId}/etapas`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    await apiSend(`/proyectos/${proyectoId}/etapas`, 'POST', {
+      Nombre,
+      Descripcion: Descripcion || null,
+      FechaFin: FechaFin || null,
     });
-    document.getElementById('nueva-etapa-nombre').value = '';
-    document.getElementById('nueva-etapa-desc').value   = '';
-    document.getElementById('nueva-etapa-fecha').value  = '';
+
+    if ($('nueva-etapa-nombre')) $('nueva-etapa-nombre').value = '';
+    if ($('nueva-etapa-desc')) $('nueva-etapa-desc').value = '';
+    if ($('nueva-etapa-fecha')) $('nueva-etapa-fecha').value = '';
+
     toast('Etapa agregada');
-    loadEtapas(proyectoId);
-  } catch(e) { toast('Error', 'red'); }
-}
-
-async function deleteEtapa(etapaId, proyectoId) {
-  if (!confirm('¿Eliminar esta etapa?')) return;
-  try {
-    await fetch(`${API}/etapas/${etapaId}`, { method:'DELETE' });
-    toast('Etapa eliminada');
-    loadEtapas(proyectoId);
+    cargarEtapasProyecto(proyectoId);
     loadGestionProyectos();
-  } catch(e) { toast('Error', 'red'); }
+  } catch (e) {
+    toast(e.message || 'Error al agregar etapa', 'red');
+  }
 }
 
-
-// ── VER DETALLES DEL PROYECTO (admin) ────────────────────────────
+// ─────────────────────────────────────────────
+// DETALLES DEL PROYECTO
+// ─────────────────────────────────────────────
 
 async function verDetallesProyecto(proyectoId) {
   window.adminProyectoIdActual = proyectoId;
-  const body = document.getElementById('det-modal-body');
-  body.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando...</div>';
+
+  const body = $('det-modal-body');
+  if (body) {
+    body.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando...</div>';
+  }
+
   openModal('modal-detalles-proy');
 
   try {
-    const data = await fetch(`${API}/proyectos/${proyectoId}/detalles`).then(r => r.json());
-    const p    = data.proyecto;
-    const docs = data.documentos || [];
-    const etps = data.etapas     || [];
+    let proyecto;
+    let documentos = [];
+    let disponibilidades = [];
 
-    document.getElementById('det-modal-title').textContent = `Detalles — ${p.Titulo}`;
+    const data = await apiGet(`/proyectos/${proyectoId}`);
 
-    const aprobBadge = {
-      aceptado:   '<span class="badge badge-green">Aceptado por profesor</span>',
-      rechazado:  '<span class="badge badge-red">Rechazado por profesor</span>',
-      pendiente:  '<span class="badge badge-orange">Pendiente de revisión</span>',
-    }[p.EstadoAprobacion || 'pendiente'];
+    if (data.proyecto) {
+      proyecto = data.proyecto;
+      documentos = data.documentos || [];
+      disponibilidades = data.disponibilidades || [];
+    } else {
+      proyecto = data;
+      documentos = await apiGet(`/proyectos/${proyectoId}/documentos`).catch(() => []);
+    }
 
-    const estatusBadge = {
-      'Pendiente':   '<span class="badge badge-orange">Pendiente</span>',
-      'En progreso': '<span class="badge badge-blue">En progreso</span>',
-      'Completado':  '<span class="badge badge-green">Completado</span>',
-    }[p.Estatus] || `<span class="badge badge-gray">${p.Estatus}</span>`;
+    const citas = await apiGet('/citas').catch(() => []);
+    const cita = Array.isArray(citas)
+      ? citas.find((c) => Number(c.ProyectoID) === Number(proyectoId))
+      : null;
+
+    if ($('det-modal-title')) {
+      $('det-modal-title').textContent = `Detalles — ${proyecto.Titulo || 'Proyecto'}`;
+    }
+
+    if (!body) return;
 
     body.innerHTML = `
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        ${estatusBadge} ${aprobBadge}
+        ${badgeEstado(proyecto.Estatus || proyecto.EstadoAprobacion || 'pendiente')}
+        ${cita ? badgeEstado(cita.Estado) : '<span class="badge badge-gray">Sin cita</span>'}
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:20px">
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Alumno</div>
-          <div style="font-size:14px;font-weight:500">${p.NombreAlumno || '—'}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${p.EmailAlumno || ''}</div>
+          <div style="font-size:14px;font-weight:500">${escapeHtml(proyecto.NombreAlumno || '—')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(proyecto.EmailAlumno || '')}</div>
         </div>
+
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
-          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Profesor</div>
-          <div style="font-size:14px;font-weight:500">${p.NombreProfesor || '<span style="color:var(--text-muted)">Sin asignar</span>'}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${p.EmailProfesor || ''}</div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Profesor elegido</div>
+          <div style="font-size:14px;font-weight:500">${escapeHtml(proyecto.NombreProfesor || cita?.NombreProfesor || 'Sin profesor')}</div>
         </div>
+
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
-          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Fecha inicio</div>
-          <div style="font-size:14px;font-weight:500">${p.FechaInicio ? new Date(p.FechaInicio).toLocaleDateString('es-MX') : '—'}</div>
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Categoría</div>
+          <div style="font-size:14px;font-weight:500">${escapeHtml(proyecto.Categoria || 'Sin categoría')}</div>
         </div>
+
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
           <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Progreso</div>
-          <div style="font-size:14px;font-weight:500">${p.Progreso || 0}%</div>
+          <div style="font-size:24px;font-weight:800;color:var(--blue)">${proyecto.Progreso || 0}%</div>
         </div>
       </div>
 
       <div style="margin-bottom:20px">
         <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Descripción</div>
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;line-height:1.6;color:var(--text)">
-          ${p.Descripcion ? p.Descripcion.replace(/\n/g, '<br>') : '<span style="color:var(--text-muted)">Sin descripción</span>'}
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;line-height:1.6">
+          ${proyecto.Descripcion
+            ? escapeHtml(proyecto.Descripcion).replace(/\n/g, '<br>')
+            : '<span style="color:var(--text-muted)">Sin descripción</span>'}
         </div>
       </div>
 
-      ${p.ComentarioRevision ? `
-      <div style="margin-bottom:20px">
-        <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Comentario del profesor</div>
-        <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:10px;padding:14px;font-size:13px;line-height:1.6">
-          ${p.ComentarioRevision.replace(/\n/g, '<br>')}
-          ${p.FechaRevision ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px">📅 ${new Date(p.FechaRevision).toLocaleString('es-MX')}</div>` : ''}
-        </div>
-      </div>` : ''}
+      ${proyecto.DocumentoTexto
+        ? `
+          <div style="margin-bottom:20px">
+            <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Documento escrito en app</div>
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;line-height:1.6">
+              ${escapeHtml(proyecto.DocumentoTexto).replace(/\n/g, '<br>')}
+            </div>
+          </div>`
+        : ''}
 
       <div style="margin-bottom:20px">
         <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
-          Documentos adjuntos (${docs.length})
+          Cita seleccionada
         </div>
-        ${docs.length === 0
-          ? '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text-muted)">El alumno aún no ha subido documentos.</div>'
-          : docs.map(d => `
-            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:6px">
-              <div style="width:32px;height:32px;border-radius:6px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+
+        ${cita
+          ? `
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;line-height:1.8">
+              <div><strong>Profesor:</strong> ${escapeHtml(cita.NombreProfesor || '—')}</div>
+              <div><strong>Día:</strong> ${formatDateLong(cita.Fecha)}</div>
+              <div><strong>Hora:</strong> ${formatTime(cita.HoraInicio)} - ${formatTime(cita.HoraFin)}</div>
+              <div><strong>Sala:</strong> ${escapeHtml(cita.Sala || '—')}</div>
+              <div><strong>Estado:</strong> ${badgeEstado(cita.Estado)}</div>
+              <div><strong>QR:</strong> ${
+                cita.CodigoQR
+                  ? `<code style="background:var(--surface);padding:4px 8px;border-radius:6px">${escapeHtml(cita.CodigoQR)}</code>`
+                  : '<span style="color:var(--text-muted)">No generado</span>'
+              }</div>
+
+              <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+                ${String(cita.Estado || '').toLowerCase() === 'pendiente_admin'
+                  ? `
+                    <button class="btn btn-success btn-sm" onclick="aprobarCita(${cita.CitaID})">Aprobar cita y liberar QR</button>
+                    <button class="btn btn-danger btn-sm" onclick="rechazarCita(${cita.CitaID})">Rechazar cita</button>
+                  `
+                  : ''}
+
+                ${cita.CodigoQR
+                  ? `<button class="btn btn-ghost btn-sm" onclick="copiarQR('${escapeHtml(cita.CodigoQR)}')">Copiar QR</button>`
+                  : ''}
               </div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.NombreArchivo}</div>
+            </div>`
+          : `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text-muted)">El alumno todavía no eligió profesor, día, hora y sala.</div>`}
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+          Profesores que ofrecieron disponibilidad (${disponibilidades.length})
+        </div>
+
+        ${disponibilidades.length
+          ? disponibilidades.map((d) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:6px">
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600">${escapeHtml(d.NombreProfesor || 'Profesor')}</div>
                 <div style="font-size:11px;color:var(--text-muted)">
-                  ${formatBytes(d.TamanoBytes)} · ${new Date(d.CreatedAt).toLocaleDateString('es-MX')}
-                  ${d.Descripcion ? ' · ' + d.Descripcion : ''}
+                  ${formatDate(d.Fecha)} · ${formatTime(d.HoraInicio)} - ${formatTime(d.HoraFin)} · ${escapeHtml(d.Sala || 'Sin sala')}
+                </div>
+              </div>
+              ${badgeEstado(d.Estado || 'disponible')}
+            </div>
+          `).join('')
+          : `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text-muted)">Ningún profesor ha ofrecido disponibilidad todavía.</div>`}
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
+          Documentos adjuntos (${documentos.length})
+        </div>
+
+        ${documentos.length === 0
+          ? '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text-muted)">Sin documentos.</div>'
+          : documentos.map((d) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:6px">
+              <div style="width:32px;height:32px;border-radius:6px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0;font-size:13px">📄</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(d.NombreArchivo || d.nombre || 'Documento')}</div>
+                <div style="font-size:11px;color:var(--text-muted)">
+                  ${formatBytes(d.TamanoBytes)} · ${formatDate(d.CreatedAt)}
+                  ${d.Descripcion ? ' · ' + escapeHtml(d.Descripcion) : ''}
                 </div>
               </div>
               <a href="${API}/documentos/${d.DocumentoID}/ver" target="_blank" class="btn btn-ghost btn-sm">Ver</a>
               <a href="${API}/documentos/${d.DocumentoID}/descargar" class="btn btn-primary btn-sm">Descargar</a>
-            </div>`).join('')
-        }
+            </div>
+          `).join('')}
       </div>
+    `;
 
-      <div>
-        <div style="font-size:12px;color:var(--text-dim);font-weight:500;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">
-          Etapas (${etps.filter(e=>e.Completada).length}/${etps.length})
-        </div>
-        ${etps.length === 0
-          ? '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text-muted)">Sin etapas definidas.</div>'
-          : etps.map(e => `
-            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:6px">
-              <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;${e.Completada ? 'background:var(--green);border-color:var(--green)' : ''}">
-                ${e.Completada ? '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" style="width:10px;height:10px"><polyline points="20,6 9,17 4,12"/></svg>' : ''}
-              </div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:13px;font-weight:500;${e.Completada ? 'color:var(--text-muted);text-decoration:line-through' : ''}">${e.Nombre}</div>
-                ${e.Descripcion ? `<div style="font-size:11px;color:var(--text-muted)">${e.Descripcion}</div>` : ''}
-              </div>
-              <span class="badge ${e.Completada ? 'badge-green' : 'badge-gray'}">${e.Completada ? 'Completada' : 'Pendiente'}</span>
-            </div>`).join('')
-        }
-      </div>`;
-    const foot = document.getElementById('det-modal-foot');
+    const foot = $('det-modal-foot');
     if (foot && !foot.querySelector('.admin-upload-btn')) {
       const btn = document.createElement('button');
-      btn.className   = 'btn btn-ghost btn-sm admin-upload-btn';
+      btn.className = 'btn btn-ghost btn-sm admin-upload-btn';
       btn.textContent = '📄 Subir análisis';
       btn.style.marginRight = 'auto';
       btn.onclick = abrirSubirDocAdmin;
       foot.insertBefore(btn, foot.firstChild);
     }
-  } catch(e) {
-    body.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px">Error al cargar los detalles</div>';
+  } catch (e) {
+    if (body) {
+      body.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px">Error al cargar los detalles</div>';
+    }
   }
 }
 
-function formatBytes(bytes) {
-  if (!bytes) return '0 B';
-  const k = 1024, sizes = ['B','KB','MB','GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i];
+function abrirSubirDocAdmin() {
+  openModal('modal-subir-doc-admin');
 }
 
-// Modal para subir documentos como admin
-function abrirSubirDocAdmin()  { document.getElementById('modal-subir-doc-admin').classList.add('open'); }
 function cerrarSubirDocAdmin() {
-  document.getElementById('modal-subir-doc-admin').classList.remove('open');
-  document.getElementById('doc-file-admin').value = '';
-  document.getElementById('doc-desc-admin').value = '';
+  closeModal('modal-subir-doc-admin');
+
+  if ($('doc-file-admin')) $('doc-file-admin').value = '';
+  if ($('doc-desc-admin')) $('doc-desc-admin').value = '';
 }
- 
+
 async function subirDocumentoAdmin() {
-  const file = document.getElementById('doc-file-admin').files[0];
-  const desc = document.getElementById('doc-desc-admin').value.trim();
+  const file = $('doc-file-admin')?.files?.[0];
+  const desc = $('doc-desc-admin')?.value?.trim();
   const proyectoId = window.adminProyectoIdActual;
- 
-  if (!file)  return toast('Selecciona un archivo', 'red');
+
+  if (!file) return toast('Selecciona un archivo', 'red');
   if (file.size > 25 * 1024 * 1024) return toast('El archivo excede 25 MB', 'red');
   if (!proyectoId) return toast('No hay proyecto activo', 'red');
- 
-  const btn = document.getElementById('btn-subir-doc-admin');
-  btn.disabled = true;
-  btn.textContent = 'Subiendo...';
- 
+
+  const btn = $('btn-subir-doc-admin');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Subiendo...';
+  }
+
   try {
     const base64 = await new Promise((resolve, reject) => {
       const r = new FileReader();
-      r.onload  = () => resolve(r.result.split(',')[1]);
+      r.onload = () => resolve(r.result.split(',')[1]);
       r.onerror = () => reject(new Error('No se pudo leer el archivo'));
       r.readAsDataURL(file);
     });
- 
-    const res = await fetch(`${API}/proyectos/${proyectoId}/documentos`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        NombreArchivo:   file.name,
-        MimeType:        file.type || 'application/octet-stream',
-        ContenidoBase64: base64,
-        Descripcion:     desc || 'Documento de análisis (Admin)',
-        SubidoPorID:     user.id
-      })
+
+    await apiSend(`/proyectos/${proyectoId}/documentos`, 'POST', {
+      NombreArchivo: file.name,
+      MimeType: file.type || 'application/octet-stream',
+      ContenidoBase64: base64,
+      Descripcion: desc || 'Documento de análisis (Admin)',
+      SubidoPorID: user.UsuarioID,
     });
-    if (!res.ok) throw new Error('Fallo al subir');
+
     toast('✓ Documento subido');
     cerrarSubirDocAdmin();
-    // Recargar detalles
+
     if (window.adminProyectoIdActual) {
       verDetallesProyecto(window.adminProyectoIdActual);
     }
-  } catch(e) {
-    toast('Error al subir el documento', 'red');
+  } catch (e) {
+    toast(e.message || 'Error al subir el documento', 'red');
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Subir documento';
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Subir documento';
+    }
   }
 }
- 
+
+// ─────────────────────────────────────────────
+// ANALÍTICAS
+// ─────────────────────────────────────────────
+
+async function loadAnaliticas() {
+  await Promise.all([
+    loadComparativaEventos(),
+    loadEventosSelectRanking(),
+  ]);
+}
+
+async function loadComparativaEventos() {
+  const cont = $('comparativa-content');
+  if (!cont) return;
+
+  cont.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando...</div>';
+
+  try {
+    const data = await apiGet('/eventos/comparativa');
+
+    if (!Array.isArray(data) || !data.length) {
+      cont.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Sin eventos con datos de evaluación aún.</div>';
+      return;
+    }
+
+    const maxProm = Math.max(...data.map((e) => parseFloat(e.PromedioGeneral) || 0), 1);
+
+    cont.innerHTML = data.map((ev) => {
+      const prom = Number(parseFloat(ev.PromedioGeneral) || 0).toFixed(1);
+      const pct = Math.round((parseFloat(ev.PromedioGeneral || 0) / maxProm) * 100);
+
+      return `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:14px;font-weight:600;color:var(--text)">${escapeHtml(ev.NombreEvento)}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+                📅 ${formatDate(ev.Fecha)} · ${badgeEstado(ev.Estado)}
+              </div>
+            </div>
+
+            <div style="text-align:right">
+              <div style="font-size:24px;font-weight:800;font-family:'Syne',sans-serif;color:var(--blue)">${prom}</div>
+              <div style="font-size:11px;color:var(--text-muted)">promedio</div>
+            </div>
+          </div>
+
+          <div style="height:8px;background:var(--border);border-radius:4px;margin-bottom:10px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:var(--blue);border-radius:4px;transition:width .5s"></div>
+          </div>
+
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <span style="font-size:12px;color:var(--text-muted)">📊 ${ev.TotalProyectos || 0} proyectos</span>
+            <span style="font-size:12px;color:var(--text-muted)">✓ ${ev.TotalEvaluaciones || 0} evaluaciones</span>
+            <span style="font-size:12px;color:var(--green)">▲ Mejor: ${ev.MejorPuntaje || 0} pts</span>
+            <span style="font-size:12px;color:var(--red)">▼ Peor: ${ev.PeorPuntaje || 0} pts</span>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    cont.innerHTML = '<div style="color:var(--red);font-size:13px">Error al cargar comparativa</div>';
+  }
+}
+
+async function loadEventosSelectRanking() {
+  try {
+    const data = await apiGet('/eventos');
+    const sel = $('select-evento-ranking');
+    if (!sel) return;
+
+    sel.innerHTML = '<option value="">Seleccionar evento...</option>' +
+      (Array.isArray(data)
+        ? data.map((e) => `<option value="${e.EventoID}">${escapeHtml(e.Nombre)}</option>`).join('')
+        : '');
+  } catch (e) {}
+}
+
+async function loadRankingEvento() {
+  const eid = $('select-evento-ranking')?.value;
+  const cont = $('ranking-content');
+
+  if (!cont) return;
+
+  if (!eid) {
+    cont.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Selecciona un evento para ver el ranking.</div>';
+    return;
+  }
+
+  cont.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando...</div>';
+
+  try {
+    const data = await apiGet(`/eventos/${eid}/ranking`);
+
+    if (!Array.isArray(data) || !data.length) {
+      cont.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Sin proyectos evaluados en este evento aún.</div>';
+      return;
+    }
+
+    const medallas = ['🥇', '🥈', '🥉'];
+
+    cont.innerHTML = `
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;color:var(--text-muted)">#</th>
+            <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;color:var(--text-muted)">Proyecto</th>
+            <th style="text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;color:var(--text-muted)">Alumno</th>
+            <th style="text-align:center;padding:10px 12px;font-size:11px;text-transform:uppercase;color:var(--text-muted)">Evaluaciones</th>
+            <th style="text-align:center;padding:10px 12px;font-size:11px;text-transform:uppercase;color:var(--text-muted)">Puntaje Total</th>
+            <th style="text-align:center;padding:10px 12px;font-size:11px;text-transform:uppercase;color:var(--text-muted)">Promedio</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map((p) => `
+            <tr style="border-bottom:1px solid var(--border);background:${p.Posicion === 1 ? 'rgba(59,130,246,.05)' : p.Posicion === 2 ? 'rgba(107,114,128,.04)' : p.Posicion === 3 ? 'rgba(217,119,6,.04)' : 'transparent'}">
+              <td style="padding:12px;font-size:18px;text-align:center">${medallas[p.Posicion - 1] || p.Posicion}</td>
+              <td style="padding:12px">
+                <div style="font-size:13px;font-weight:600;color:var(--text)">${escapeHtml(p.Titulo)}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Progreso: ${p.Progreso || 0}%</div>
+              </td>
+              <td style="padding:12px;font-size:13px;color:var(--text-dim)">${escapeHtml(p.NombreAlumno)}</td>
+              <td style="padding:12px;text-align:center"><span class="badge badge-blue">${p.TotalEvaluaciones || 0}</span></td>
+              <td style="padding:12px;text-align:center"><span style="font-size:18px;font-weight:800;font-family:'Syne',sans-serif;color:var(--blue)">${p.PuntajeTotal || 0}</span></td>
+              <td style="padding:12px;text-align:center"><span style="font-size:13px;font-weight:600;color:var(--green)">${p.Promedio || 0}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+  } catch (e) {
+    cont.innerHTML = '<div style="color:var(--red);font-size:13px">Error al cargar ranking</div>';
+  }
+}
+
+// ─────────────────────────────────────────────
+// LOGOUT
+// ─────────────────────────────────────────────
+
+function logout() {
+  sessionStorage.removeItem('user');
+  localStorage.removeItem('user');
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+}

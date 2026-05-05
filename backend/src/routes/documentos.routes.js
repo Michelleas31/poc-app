@@ -1,8 +1,3 @@
-// ✅ CORREGIDO v1.1 — 2026-04-26
-// Cambios: #15 eliminado router.use(express.json) redundante (el límite de
-//          200mb ya está en app.js global). #14 añadido chequeo básico de
-//          ProfesorID en endpoint de revisión. Tabla ProyectoDocumentos
-//          creada en migracion_documentos_revision.sql.
 const express = require("express");
 const router  = express.Router();
 const db      = require("../services/database");
@@ -18,20 +13,20 @@ router.get("/proyectos/:id/detalles", (req, res) => {
     SELECT p.*,
            a.Nombre  AS NombreAlumno,   a.Email  AS EmailAlumno,
            pr.Nombre AS NombreProfesor, pr.Email AS EmailProfesor
-    FROM Proyectos p
-    LEFT JOIN Usuarios a  ON p.AlumnoID   = a.UsuarioID
-    LEFT JOIN Usuarios pr ON p.ProfesorID = pr.UsuarioID
+    FROM proyectos p
+    LEFT JOIN usuarios a  ON p.AlumnoID   = a.UsuarioID
+    LEFT JOIN usuarios pr ON p.ProfesorID = pr.UsuarioID
     WHERE p.ProyectoID = ?`;
 
   const qDocs = `
     SELECT DocumentoID, NombreArchivo, MimeType, TamanoBytes,
            Descripcion, SubidoPorID, CreatedAt
-    FROM ProyectoDocumentos
+    FROM documentos_proyecto
     WHERE ProyectoID = ?
     ORDER BY CreatedAt DESC`;
 
   const qEtapas = `
-    SELECT * FROM EtapasProyecto
+    SELECT * FROM etapasproyecto
     WHERE ProyectoID = ?
     ORDER BY Orden ASC`;
 
@@ -59,8 +54,8 @@ router.get("/proyectos/:id/documentos", (req, res) => {
     `SELECT d.DocumentoID, d.ProyectoID, d.NombreArchivo, d.MimeType,
             d.TamanoBytes, d.Descripcion, d.SubidoPorID, d.CreatedAt,
             u.Nombre AS NombreSubidoPor
-     FROM ProyectoDocumentos d
-     LEFT JOIN Usuarios u ON d.SubidoPorID = u.UsuarioID
+     FROM documentos_proyecto d
+     LEFT JOIN usuarios u ON d.SubidoPorID = u.UsuarioID
      WHERE d.ProyectoID = ?
      ORDER BY d.CreatedAt DESC`,
     [req.params.id],
@@ -90,7 +85,7 @@ router.post("/proyectos/:id/documentos", (req, res) => {
   }
 
   db.query(
-    `INSERT INTO ProyectoDocumentos
+    `INSERT INTO documentos_proyecto
        (ProyectoID, NombreArchivo, MimeType, TamanoBytes, Contenido, Descripcion, SubidoPorID)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [proyId, NombreArchivo, MimeType || null, buffer.length, buffer, Descripcion || null, SubidoPorID],
@@ -107,7 +102,7 @@ router.post("/proyectos/:id/documentos", (req, res) => {
 // DESCARGAR documento (envía el binario como attachment)
 router.get("/documentos/:id/descargar", (req, res) => {
   db.query(
-    "SELECT NombreArchivo, MimeType, Contenido FROM ProyectoDocumentos WHERE DocumentoID = ?",
+    "SELECT NombreArchivo, MimeType, Contenido FROM documentos_proyecto WHERE DocumentoID = ?",
     [req.params.id],
     (err, rows) => {
       if (err) return res.status(500).json(err);
@@ -123,7 +118,7 @@ router.get("/documentos/:id/descargar", (req, res) => {
 // VER documento inline (para previsualizar PDFs/imágenes en el navegador)
 router.get("/documentos/:id/ver", (req, res) => {
   db.query(
-    "SELECT NombreArchivo, MimeType, Contenido FROM ProyectoDocumentos WHERE DocumentoID = ?",
+    "SELECT NombreArchivo, MimeType, Contenido FROM documentos_proyecto WHERE DocumentoID = ?",
     [req.params.id],
     (err, rows) => {
       if (err) return res.status(500).json(err);
@@ -138,7 +133,7 @@ router.get("/documentos/:id/ver", (req, res) => {
 
 // ELIMINAR documento
 router.delete("/documentos/:id", (req, res) => {
-  db.query("DELETE FROM ProyectoDocumentos WHERE DocumentoID = ?", [req.params.id], (err) => {
+  db.query("DELETE FROM documentos_proyecto WHERE DocumentoID = ?", [req.params.id], (err) => {
     if (err) return res.status(500).json(err);
     res.json({ message: "Documento eliminado" });
   });
@@ -161,7 +156,7 @@ router.put("/proyectos/:id/revisar", (req, res) => {
 
   if (ProfesorID) {
     db.query(
-      "SELECT ProfesorID FROM Proyectos WHERE ProyectoID = ?",
+      "SELECT ProfesorID FROM proyectos WHERE ProyectoID = ?",
       [req.params.id],
       (err, rows) => {
         if (err) return res.status(500).json(err);
@@ -178,7 +173,7 @@ router.put("/proyectos/:id/revisar", (req, res) => {
 
   function guardarRevision() {
     db.query(
-      `UPDATE Proyectos
+      `UPDATE proyectos
           SET EstadoAprobacion   = ?,
               ComentarioRevision = ?,
               FechaRevision      = NOW()
@@ -197,8 +192,8 @@ router.get("/proyectos/:id/aprobacion", (req, res) => {
   db.query(
     `SELECT ProyectoID, EstadoAprobacion, ComentarioRevision, FechaRevision,
             ProfesorID,
-            (SELECT Nombre FROM Usuarios WHERE UsuarioID = Proyectos.ProfesorID) AS NombreProfesor
-     FROM Proyectos
+            (SELECT Nombre FROM usuarios WHERE UsuarioID = proyectos.ProfesorID) AS NombreProfesor
+     FROM proyectos
      WHERE ProyectoID = ?`,
     [req.params.id],
     (err, rows) => {

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluacion QR - ProjectManager</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles/evaluar-qr.css">
+</head>
+
+<body>
+  <main class="eval-shell">
+    <header class="eval-topbar">
+      <div>
+        <div class="eval-kicker">ProjectManager</div>
+        <h1>Evaluacion por QR</h1>
+        <p>Vista de calificacion para usar mientras el alumno expone su proyecto.</p>
+      </div>
+
+      <div class="eval-top-actions">
+        <button class="btn btn-ghost" onclick="window.location.href='panel-profesor.html'">Panel profesor</button>
+        <button class="btn btn-primary" id="btn-reload-token" onclick="cargarEvaluacionQR()">Recargar</button>
+      </div>
+    </header>
+
+    <section class="eval-token-card" id="token-card">
+      <div>
+        <div class="mini-label">Token QR</div>
+        <div class="token-value" id="token-value">Cargando...</div>
+      </div>
+
+      <form class="token-form" onsubmit="event.preventDefault();cambiarTokenManual()">
+        <input class="form-control" id="token-manual" placeholder="Pegar token si es necesario">
+        <button class="btn btn-ghost" type="submit">Cargar token</button>
+      </form>
+    </section>
+
+    <section class="eval-grid">
+      <aside class="project-panel">
+        <div id="project-summary" class="summary-card">
+          <div class="loader-line"></div>
+          <div class="loader-line short"></div>
+          <div class="loader-line tiny"></div>
+        </div>
+
+        <div class="summary-card">
+          <div class="card-title">Documentos</div>
+          <div id="docs-list" class="docs-list">
+            <div class="muted">Cargando documentos...</div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="rubric-panel">
+        <div class="rubric-head">
+          <div>
+            <div class="mini-label">Rubrica asignada</div>
+            <h2 id="rubric-title">Cargando rubrica...</h2>
+          </div>
+
+          <div class="score-pill">
+            <span id="score-total">0 / 0</span>
+            <strong id="score-percent">0%</strong>
+          </div>
+        </div>
+
+        <div id="rubric-content" class="rubric-content">
+          <div class="empty-state">Cargando criterios...</div>
+        </div>
+
+        <div class="observations-card">
+          <label for="eval-observaciones">Observaciones generales</label>
+          <textarea id="eval-observaciones" class="form-control" rows="4" placeholder="Comentarios sobre dominio del tema, demostracion, calidad tecnica y recomendaciones..."></textarea>
+        </div>
+
+        <footer class="eval-actions">
+          <div class="save-hint" id="save-hint">Selecciona un nivel por cada criterio.</div>
+          <button class="btn btn-primary btn-lg" id="btn-save-eval" onclick="guardarEvaluacionQR()" disabled>Guardar evaluacion</button>
+        </footer>
+      </section>
+    </section>
+  </main>
+
+  <div id="toast" class="toast">
+    <span id="toast-dot"></span>
+    <span id="toast-msg"></span>
+  </div>
+
+  <script src="../evaluar-qr.js"></script>
+</body>
+</html>

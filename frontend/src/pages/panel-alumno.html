@@ -4,338 +4,552 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel Alumno — ProjectManager</title>
+
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../styles/panel-profesor.css">
   <link rel="stylesheet" href="../styles/panel-alumno.css">
+
+  <!-- QR render sin npm -->
+  <script src="https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js"></script>
 </head>
+
 <body>
- 
-<!-- ── SIDEBAR ── -->
-<aside class="sidebar">
-  <div class="sidebar-logo">
-    <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-        <path d="M14 17.5h7M17.5 14v7"/>
-      </svg>
-    </div>
-    <span class="logo-name">ProjectManager</span>
-    <span class="logo-badge">Alumno</span>
-  </div>
- 
-  <nav class="sidebar-nav">
-    <span class="nav-section-label">Mi proyecto</span>
-    <button class="nav-item active" onclick="showSection('mi-proyecto', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
-      </svg>
-      Mi proyecto
-    </button>
- 
-    <span class="nav-section-label">Eventos</span>
-    <button class="nav-item" onclick="showSection('inscribir', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
-        <path d="M12 14v4M10 16h4"/>
-      </svg>
-      Inscribir a evento
-    </button>
-    <button class="nav-item" onclick="showSection('mis-inscripciones', this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-      </svg>
-      Mis inscripciones
-      <span class="nav-badge" id="badge-inscripciones" style="display:none"></span>
-    </button>
-  </nav>
- 
-  <div class="sidebar-user">
-    <div class="avatar" id="nav-avatar">A</div>
-    <div class="user-info">
-      <div class="user-name" id="nav-nombre">Alumno</div>
-      <div class="user-role">Alumno</div>
-    </div>
-    <button class="btn-logout" onclick="logout()" title="Cerrar sesión">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-        <polyline points="16,17 21,12 16,7"/>
-        <line x1="21" y1="12" x2="9" y2="12"/>
-      </svg>
-    </button>
-  </div>
-</aside>
- 
-<!-- ── MAIN ── -->
-<main class="main">
-  <div class="topbar">
-    <div>
-      <div class="page-title" id="page-title">Mi proyecto</div>
-      <div class="page-subtitle" id="page-subtitle">Progreso y etapas</div>
-    </div>
-  </div>
- 
-  <div class="content">
- 
-    <!-- ═══════════ MI PROYECTO ═══════════ -->
-    <div class="section active" id="section-mi-proyecto">
-      <div id="proyecto-content">
-        <div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando tu proyecto...</div>
-      </div>
-    </div>
- 
-    <!-- ═══════════ INSCRIBIR A EVENTO ═══════════ -->
-    <div class="section" id="section-inscribir">
- 
-      <!-- Steps indicador -->
-      <div class="steps" id="steps-indicator">
-        <div class="step active" id="step-1">
-          <div class="step-num">1</div>
-          <span>Elegir evento</span>
-        </div>
-        <div class="step" id="step-2">
-          <div class="step-num">2</div>
-          <span>Participantes</span>
-        </div>
-        <div class="step" id="step-3">
-          <div class="step-num">3</div>
-          <span>Documento</span>
-        </div>
-        <div class="step" id="step-4">
-          <div class="step-num">4</div>
-          <span>Confirmar</span>
-        </div>
-      </div>
- 
-      <!-- Paso 1: Elegir evento -->
-      <div id="paso-1">
-        <div class="section-card">
-          <div class="section-card-title">Eventos disponibles</div>
-          <div id="eventos-disponibles" class="eventos-grid">
-            <div style="color:var(--text-muted);font-size:13px">Cargando eventos...</div>
-          </div>
-        </div>
-        <div style="display:flex;justify-content:flex-end;margin-top:16px">
-          <button class="btn btn-primary" onclick="irPaso(2)" id="btn-paso-2" disabled>
-            Siguiente — Participantes
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"/></svg>
-          </button>
-        </div>
-      </div>
- 
-      <!-- Paso 2: Participantes y asesores -->
-      <div id="paso-2" style="display:none">
-        <div class="section-card">
-          <div class="section-card-title">
-            Participantes del proyecto
-            <button class="btn btn-ghost btn-sm" onclick="openModal('modal-agregar-participante')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Agregar participante
-            </button>
-          </div>
-          <div id="lista-participantes" style="display:flex;flex-direction:column;gap:8px">
-            <!-- se llena dinámicamente -->
-          </div>
-        </div>
- 
-        <div class="section-card">
-          <div class="section-card-title">
-            Asesores
-            <button class="btn btn-ghost btn-sm" onclick="openModal('modal-agregar-asesor')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Agregar asesor
-            </button>
-          </div>
-          <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Opcional. Agrega los profesores que asesoraron tu proyecto.</p>
-          <div id="lista-asesores" style="display:flex;flex-direction:column;gap:8px">
-            <!-- se llena dinámicamente -->
-          </div>
-        </div>
- 
-        <div style="display:flex;justify-content:space-between;margin-top:8px">
-          <button class="btn btn-ghost" onclick="irPaso(1)">← Atrás</button>
-          <button class="btn btn-primary" onclick="irPaso(3)">
-            Siguiente — Documento
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"/></svg>
-          </button>
-        </div>
-      </div>
- 
-      <!-- Paso 3: Documento -->
-      <div id="paso-3" style="display:none">
-        <div class="section-card">
-          <div class="section-card-title">Información del proyecto</div>
 
-          <div class="form-group">
-            <label>Nombre del proyecto *</label>
-            <input
-              class="form-control"
-              id="inscripcion-titulo"
-              type="text"
-              maxlength="200"
-              placeholder="Ej. Sistema de gestión de proyectos escolares">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          <path d="M14 17.5h7M17.5 14v7"></path>
+        </svg>
+      </div>
+      <span class="logo-name">ProjectManager</span>
+      <span class="logo-badge">Alumno</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Mi proyecto</span>
+
+      <button class="nav-item active" onclick="showSection('mi-proyecto', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <path d="M9 12l2 2 4-4"></path>
+        </svg>
+        Mi proyecto
+      </button>
+
+      <span class="nav-section-label">Evaluación</span>
+
+      <button class="nav-item" onclick="showSection('evaluador', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        Elegir evaluador
+        <span class="nav-badge" id="badge-evaluador" style="display:none">!</span>
+      </button>
+
+      <button class="nav-item" onclick="showSection('mi-qr', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+          <path d="M14 14h.01M14 17h3M17 14v7M20 14h.01"></path>
+        </svg>
+        Generar QR
+      </button>
+
+      <span class="nav-section-label">Eventos</span>
+
+      <button class="nav-item" onclick="showSection('inscribir', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"></path>
+        </svg>
+        Inscribir a evento
+      </button>
+
+      <button class="nav-item" onclick="showSection('mis-inscripciones', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11l3 3L22 4"></path>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+        </svg>
+        Mis inscripciones
+        <span class="nav-badge" id="badge-inscripciones" style="display:none"></span>
+      </button>
+
+      <span class="nav-section-label">Análisis</span>
+
+      <button class="nav-item" onclick="showSection('mi-desempeno', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 6 13.5 15.5 8 10 1 17"></polyline>
+          <polyline points="17 6 23 6 23 12"></polyline>
+        </svg>
+        Mi desempeño
+      </button>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="avatar" id="nav-avatar">A</div>
+      <div class="user-info">
+        <div class="user-name" id="nav-nombre">Alumno</div>
+        <div class="user-role">Alumno</div>
+      </div>
+
+      <button class="btn-logout" onclick="logout()" title="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16,17 21,12 16,7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="page-title">Mi proyecto</div>
+        <div class="page-subtitle" id="page-subtitle">Progreso y etapas</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- MI PROYECTO -->
+      <section class="section active" id="section-mi-proyecto">
+        <div id="proyecto-content">
+          <div style="color:var(--text-muted);font-size:13px;padding:16px">
+            Cargando tu proyecto...
+          </div>
+        </div>
+      </section>
+
+      <!-- ELEGIR EVALUADOR -->
+      <section class="section" id="section-evaluador">
+        <div class="section-card hidden-card" id="card-mi-evaluador">
+          <div class="section-card-title">Tu evaluador seleccionado</div>
+          <div id="mi-evaluador-info"></div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-card-title">Evaluadores disponibles</div>
+          <div id="evaluadores-disponibles">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MI QR -->
+      <section class="section" id="section-mi-qr">
+        <div class="section-card">
+          <div class="section-card-title">Generar QR para presentación</div>
+
+          <div id="qr-content">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INSCRIBIR A EVENTO -->
+      <section class="section" id="section-inscribir">
+        <div class="steps" id="steps-indicator">
+          <div class="step active" id="step-1">
+            <div class="step-num">1</div>
+            <span>Evento</span>
           </div>
 
-          <div class="form-group">
-            <label>Descripción escrita *</label>
-            <textarea
-              class="form-control"
-              id="inscripcion-descripcion"
-              rows="5"
-              placeholder="Describe de qué trata tu proyecto, qué problema resuelve, tecnologías usadas, resultados obtenidos..."></textarea>
+          <div class="step" id="step-2">
+            <div class="step-num">2</div>
+            <span>Participantes</span>
           </div>
 
-          <div class="form-group">
-            <label>Documento PDF (opcional)</label>
-            <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
-              <div class="upload-zone-icon">📄</div>
-              <div class="upload-zone-text">Arrastra tu PDF aquí o haz clic para seleccionar</div>
-              <div class="upload-zone-hint">Solo archivos .pdf · Máximo 10 MB</div>
-              <div class="upload-file-name" id="file-name-display" style="display:none"></div>
+          <div class="step" id="step-3">
+            <div class="step-num">3</div>
+            <span>Documento</span>
+          </div>
+
+          <div class="step" id="step-4">
+            <div class="step-num">4</div>
+            <span>Confirmar</span>
+          </div>
+        </div>
+
+        <!-- PASO 1 -->
+        <div id="paso-1">
+          <div class="section-card">
+            <div class="section-card-title">Eventos disponibles</div>
+
+            <div id="eventos-disponibles" class="eventos-grid">
+              <div style="color:var(--text-muted);font-size:13px">Cargando eventos...</div>
             </div>
-            <input type="file" id="file-input" accept=".pdf" style="display:none">
+          </div>
+
+          <div class="wizard-actions wizard-actions-right">
+            <button class="btn btn-primary" onclick="irPaso(2)" id="btn-paso-2" disabled>
+              Siguiente — Participantes
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9,18 15,12 9,6"></polyline>
+              </svg>
+            </button>
           </div>
         </div>
 
-        <div style="display:flex;justify-content:space-between;margin-top:8px">
-          <button class="btn btn-ghost" onclick="irPaso(2)">← Atrás</button>
-          <button class="btn btn-primary" onclick="irPaso(4)">
-            Siguiente — Confirmar
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,18 15,12 9,6"/></svg>
-          </button>
+        <!-- PASO 2 -->
+        <div id="paso-2" style="display:none">
+          <div class="section-card">
+            <div class="section-card-title">
+              Participantes
+              <button class="btn btn-ghost btn-sm" onclick="openModal('modal-agregar-participante')">
+                + Agregar
+              </button>
+            </div>
+
+            <div id="lista-participantes" class="stack-list"></div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-title">
+              Asesores opcionales
+              <button class="btn btn-ghost btn-sm" onclick="openModal('modal-agregar-asesor')">
+                + Agregar
+              </button>
+            </div>
+
+            <div id="lista-asesores" class="stack-list"></div>
+          </div>
+
+          <div class="wizard-actions wizard-actions-between">
+            <button class="btn btn-ghost" onclick="irPaso(1)">← Atrás</button>
+
+            <button class="btn btn-primary" onclick="irPaso(3)">
+              Siguiente — Documento
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
+                <polyline points="9,18 15,12 9,6"></polyline>
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
- 
-      <!-- Paso 4: Confirmar -->
-      <div id="paso-4" style="display:none">
+
+        <!-- PASO 3 -->
+        <div id="paso-3" style="display:none">
+          <div class="section-card">
+            <div class="section-card-title">Información del proyecto</div>
+
+            <div class="form-group">
+              <label>Nombre del proyecto *</label>
+              <input class="form-control" id="inscripcion-titulo" type="text" maxlength="200" placeholder="Ej. Sistema de gestión escolar">
+            </div>
+
+            <div class="form-group">
+              <label>Categoría / Tema *</label>
+              <input class="form-control" id="inscripcion-categoria" type="text" maxlength="100" placeholder="Ej. Tecnología, Salud, Medio ambiente...">
+            </div>
+
+            <div class="form-group">
+              <label>Descripción del proyecto *</label>
+              <textarea class="form-control" id="inscripcion-descripcion" rows="5" placeholder="Describe de qué trata, qué problema resuelve, tecnologías usadas..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Documento PDF opcional</label>
+
+              <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+                <div class="upload-zone-icon">📄</div>
+                <div class="upload-zone-text">Arrastra tu PDF o haz clic para seleccionar</div>
+                <div class="upload-zone-hint">Solo .pdf · Máximo 10 MB</div>
+                <div class="upload-file-name" id="file-name-display" style="display:none"></div>
+              </div>
+
+              <input type="file" id="file-input" accept=".pdf" style="display:none">
+            </div>
+          </div>
+
+          <div class="wizard-actions wizard-actions-between">
+            <button class="btn btn-ghost" onclick="irPaso(2)">← Atrás</button>
+
+            <button class="btn btn-primary" onclick="irPaso(4)">
+              Siguiente — Confirmar
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
+                <polyline points="9,18 15,12 9,6"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- PASO 4 -->
+        <div id="paso-4" style="display:none">
+          <div class="section-card">
+            <div class="section-card-title">Resumen de inscripción</div>
+            <div id="resumen-inscripcion"></div>
+          </div>
+
+          <div class="notice-card notice-warning">
+            ⚠ Una vez enviada quedará <strong>pendiente</strong> hasta que el administrador la revise.
+          </div>
+
+          <div class="wizard-actions wizard-actions-between">
+            <button class="btn btn-ghost" onclick="irPaso(3)">← Atrás</button>
+
+            <button class="btn btn-success" onclick="confirmarInscripcion()" id="btn-confirmar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20,6 9,17 4,12"></polyline>
+              </svg>
+              Enviar inscripción
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- MIS INSCRIPCIONES -->
+      <section class="section" id="section-mis-inscripciones">
+        <div id="inscripciones-content">
+          <div style="color:var(--text-muted);font-size:13px;padding:16px">
+            Cargando...
+          </div>
+        </div>
+      </section>
+
+      <!-- MI DESEMPEÑO -->
+      <section class="section" id="section-mi-desempeno">
         <div class="section-card">
-          <div class="section-card-title">Resumen de inscripción</div>
-          <div id="resumen-inscripcion" style="display:flex;flex-direction:column;gap:14px">
-            <!-- se llena dinámicamente -->
+          <div class="section-card-title">Resultados de evaluación con rúbrica</div>
+          <div id="desemp-evaluacion">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
           </div>
         </div>
- 
-        <div style="background:rgba(245,132,42,.08);border:1px solid rgba(245,132,42,.25);border-radius:10px;padding:14px 18px;margin-top:4px;margin-bottom:20px;font-size:13px;color:var(--orange)">
-          ⚠ Una vez enviada, la inscripción quedará en estado <strong>pendiente</strong> hasta que el administrador la revise y apruebe o rechace.
-        </div>
- 
-        <div style="display:flex;justify-content:space-between">
-          <button class="btn btn-ghost" onclick="irPaso(3)">← Atrás</button>
-          <button class="btn btn-success" onclick="confirmarInscripcion()" id="btn-confirmar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>
-            Enviar inscripción
-          </button>
-        </div>
-      </div>
- 
-    </div><!-- /section-inscribir -->
- 
-    <!-- ═══════════ MIS INSCRIPCIONES ═══════════ -->
-    <div class="section" id="section-mis-inscripciones">
-      <div id="inscripciones-content">
-        <div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando inscripciones...</div>
-      </div>
-    </div>
- 
-  </div><!-- /content -->
-</main>
- 
-<!-- ── MODALES ── -->
- 
-<!-- Modal: Agregar participante -->
-<div class="modal-overlay" id="modal-agregar-participante">
-  <div class="modal" style="max-width:440px">
-    <div class="modal-head">
-      <h3>Agregar participante</h3>
-      <button class="modal-close" onclick="closeModal('modal-agregar-participante')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>Buscar alumno registrado</label>
-        <input class="form-control" id="buscar-participante" placeholder="Nombre o correo..." oninput="buscarAlumnos(this.value)">
-      </div>
-      <div id="resultados-participante" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="closeModal('modal-agregar-participante')">Cerrar</button>
-    </div>
-  </div>
-</div>
- 
-<!-- Modal: Agregar asesor -->
-<div class="modal-overlay" id="modal-agregar-asesor">
-  <div class="modal" style="max-width:440px">
-    <div class="modal-head">
-      <h3>Agregar asesor</h3>
-      <button class="modal-close" onclick="closeModal('modal-agregar-asesor')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>Buscar profesor registrado</label>
-        <input class="form-control" id="buscar-asesor" placeholder="Nombre o correo..." oninput="buscarProfesores(this.value)">
-      </div>
-      <div id="resultados-asesor" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="closeModal('modal-agregar-asesor')">Cerrar</button>
-    </div>
-  </div>
-</div>
- 
-<!-- Celebración al completar proyecto -->
-<div class="celebracion" id="celebracion">
-  <div class="celebracion-inner">
-    <div class="celebracion-emoji">🎉</div>
-    <div class="celebracion-title">¡Proyecto completado!</div>
-    <div class="celebracion-sub">Has completado todas las etapas. ¡Excelente trabajo!</div>
-    <button class="btn btn-primary" onclick="document.getElementById('celebracion').classList.remove('show')">Continuar</button>
-  </div>
-</div>
 
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- MODAL: Subir documento del proyecto                             -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modal-subir-doc">
-  <div class="modal" style="max-width:480px">
-    <div class="modal-head">
-      <h3>Subir documento</h3>
-      <button class="modal-close" onclick="cerrarSubir()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+        <div class="section-card">
+          <div class="section-card-title">Historial de evaluaciones</div>
+          <div id="desemp-historial">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-card-title">Indicadores de tu proyecto</div>
+          <div id="desemp-indicadores">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-card-title">Mi posición en el evento</div>
+
+          <div class="form-group">
+            <label>Seleccionar evento</label>
+            <select class="form-control" id="desemp-select-evento" onchange="loadDesempRanking()">
+              <option value="">Cargando...</option>
+            </select>
+          </div>
+
+          <div id="desemp-ranking">
+            <div style="color:var(--text-muted);font-size:13px">Selecciona un evento.</div>
+          </div>
+        </div>
+      </section>
+
     </div>
-    <div class="modal-body">
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
-        Sube documentos que expliquen de qué trata tu proyecto (PDF, Word, imágenes, etc.).
-        Tu profesor los podrá descargar para revisarlos.
-      </p>
-      <div class="form-group">
-        <label>Archivo *</label>
-        <input type="file" id="doc-file" class="form-control"
-               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.txt,.zip">
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Tamaño máximo: 25 MB</div>
+  </main>
+
+  <!-- MODAL AGREGAR PARTICIPANTE -->
+  <div class="modal-overlay" id="modal-agregar-participante">
+    <div class="modal modal-sm">
+      <div class="modal-head">
+        <h3>Agregar participante</h3>
+
+        <button class="modal-close" onclick="closeModal('modal-agregar-participante')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
-      <div class="form-group">
-        <label>Descripción (opcional)</label>
-        <input type="text" id="doc-desc" class="form-control" placeholder="Ej. Propuesta inicial del proyecto">
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Buscar alumno</label>
+          <input class="form-control" id="buscar-participante" placeholder="Nombre o correo..." oninput="buscarAlumnos(this.value)">
+        </div>
+
+        <div id="resultados-participante" class="search-results-list"></div>
       </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="cerrarSubir()">Cancelar</button>
-      <button class="btn btn-primary" id="btn-subir-doc" onclick="subirDocumento()">Subir</button>
+
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('modal-agregar-participante')">Cerrar</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Toast -->
-<div class="toast" id="toast">
-  <div class="toast-dot green" id="toast-dot"></div>
-  <span id="toast-msg"></span>
-</div>
- 
+  <!-- MODAL AGREGAR ASESOR -->
+  <div class="modal-overlay" id="modal-agregar-asesor">
+    <div class="modal modal-sm">
+      <div class="modal-head">
+        <h3>Agregar asesor</h3>
+
+        <button class="modal-close" onclick="closeModal('modal-agregar-asesor')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Buscar profesor</label>
+          <input class="form-control" id="buscar-asesor" placeholder="Nombre o correo..." oninput="buscarProfesores(this.value)">
+        </div>
+
+        <div id="resultados-asesor" class="search-results-list"></div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('modal-agregar-asesor')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL SUBIR DOCUMENTO -->
+  <div class="modal-overlay" id="modal-subir-doc">
+    <div class="modal modal-md">
+      <div class="modal-head">
+        <h3>Subir documento</h3>
+
+        <button class="modal-close" onclick="cerrarSubir()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Archivo *</label>
+          <input type="file" id="doc-file" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.txt,.zip">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            Máximo 25 MB
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Descripción opcional</label>
+          <input type="text" id="doc-desc" class="form-control" placeholder="Ej. Propuesta inicial">
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="cerrarSubir()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-subir-doc" onclick="subirDocumento()">Subir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DOCUMENTO DE TEXTO -->
+  <div class="modal-overlay" id="modal-doc-texto-alumno">
+    <div class="modal modal-md">
+      <div class="modal-head">
+        <h3>Crear documento de texto</h3>
+
+        <button class="modal-close" onclick="cerrarDocTextoAlumno()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Título *</label>
+          <input type="text" id="alum-doc-titulo" class="form-control" maxlength="200" placeholder="Ej. Análisis de resultados">
+        </div>
+
+        <div class="form-group">
+          <label>Contenido *</label>
+          <textarea id="alum-doc-contenido" class="form-control" rows="8" style="resize:vertical" placeholder="Escribe el contenido del documento..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="cerrarDocTextoAlumno()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-guardar-doc-alumno" onclick="guardarDocTextoAlumno()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CREAR PROYECTO -->
+  <div class="modal-overlay" id="modal-crear-proyecto">
+    <div class="modal modal-md">
+      <div class="modal-head">
+        <h3>Crear mi proyecto</h3>
+
+        <button class="modal-close" onclick="closeModal('modal-crear-proyecto')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Título *</label>
+          <input type="text" id="cp-titulo" class="form-control" maxlength="200" placeholder="Nombre de tu proyecto">
+        </div>
+
+        <div class="form-group">
+          <label>Categoría / Tema *</label>
+          <input type="text" id="cp-categoria" class="form-control" maxlength="100" placeholder="Ej. Tecnología, Salud, Sustentabilidad...">
+        </div>
+
+        <div class="form-group">
+          <label>Descripción escrita *</label>
+          <textarea id="cp-descripcion" class="form-control" rows="5" placeholder="De qué trata tu proyecto, problema que resuelve, tecnologías usadas..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Documento PDF opcional</label>
+          <input type="file" id="cp-pdf" class="form-control" accept=".pdf">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+            Máximo 10 MB
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('modal-crear-proyecto')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-crear-proy" onclick="crearProyecto()">Crear proyecto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CELEBRACIÓN -->
+  <div class="celebracion" id="celebracion">
+    <div class="celebracion-inner">
+      <div class="celebracion-emoji">🎉</div>
+      <div class="celebracion-title">¡Proyecto completado!</div>
+      <div class="celebracion-sub">Has completado todas las etapas. ¡Excelente trabajo!</div>
+
+      <button class="btn btn-primary" onclick="document.getElementById('celebracion').classList.remove('show')">
+        Continuar
+      </button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast">
+    <div class="toast-dot green" id="toast-dot"></div>
+    <span id="toast-msg"></span>
+  </div>
+
+  <script src="../panel-alumno.js"></script>
 </body>
-<script src="../panel-alumno.js"></script>
 </html>

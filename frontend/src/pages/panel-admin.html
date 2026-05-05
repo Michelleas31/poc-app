@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — ProjectManager</title>
+
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../styles/panel-profesor.css">
   <link rel="stylesheet" href="../styles/panel-admin.css">
 </head>
 <body>
@@ -13,62 +15,127 @@
   <div class="sidebar-logo">
     <div class="logo-icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
-        <rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/>
+        <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+        <path d="M14 17.5h7M17.5 14v7"></path>
       </svg>
     </div>
     <span class="logo-name">ProjectManager</span>
     <span class="logo-badge">Admin</span>
   </div>
+
   <nav class="sidebar-nav">
     <span class="nav-section-label">General</span>
-    <button class="nav-item active" onclick="showSection('dashboard',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+
+    <button class="nav-item" onclick="showSection('dashboard', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+      </svg>
       Dashboard
     </button>
+
     <span class="nav-section-label">Usuarios</span>
-    <button class="nav-item" onclick="showSection('usuarios',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+
+    <button class="nav-item" onclick="showSection('usuarios', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
       Usuarios
     </button>
+
     <span class="nav-section-label">Eventos</span>
-    <button class="nav-item" onclick="showSection('eventos',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+
+    <button class="nav-item" onclick="showSection('eventos', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+        <path d="M16 2v4M8 2v4M3 10h18"></path>
+      </svg>
       Gestionar Eventos
     </button>
-    <button class="nav-item" onclick="showSection('horarios',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+
+    <button class="nav-item" onclick="showSection('horarios', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 6v6l4 2"></path>
+      </svg>
       Horarios y Aulas
     </button>
-    <button class="nav-item" onclick="showSection('rubricas',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-      Rubricas
-    </button>
-    <span class="nav-section-label">Proyectos</span>
-    <button class="nav-item" onclick="showSection('gestion-proyectos',this)">
+
+    <button class="nav-item" onclick="showSection('rubricas', this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/>
+        <path d="M9 11l3 3L22 4"></path>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+      </svg>
+      Rúbricas
+    </button>
+
+    <span class="nav-section-label">Proyectos</span>
+
+    <button class="nav-item active" onclick="showSection('gestion-proyectos', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+        <path d="M9 12l2 2 4-4"></path>
       </svg>
       Gestión de Proyectos
     </button>
-    <button class="nav-item" onclick="showSection('proyectos',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+
+    <button class="nav-item" onclick="showSection('proyectos', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14,2 14,8 20,8"></polyline>
+      </svg>
       Aprobar Proyectos
       <span class="nav-badge" id="badge-proyectos"></span>
     </button>
-    <button class="nav-item" onclick="showSection('evaluadores',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+
+    <button class="nav-item" onclick="showSection('citas', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+        <path d="M16 2v4M8 2v4M3 10h18"></path>
+        <path d="M9 16h6"></path>
+      </svg>
+      Citas y QR
+    </button>
+
+    <button class="nav-item" onclick="showSection('evaluadores', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+      </svg>
       Asignar Evaluadores
     </button>
+
+    <span class="nav-section-label">Analíticas</span>
+
+    <button class="nav-item" onclick="showSection('analiticas', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+        <line x1="2" y1="20" x2="22" y2="20"></line>
+      </svg>
+      Analíticas y Ranking
+    </button>
   </nav>
+
   <div class="sidebar-user">
     <div class="avatar">A</div>
     <div class="user-info">
       <div class="user-name">Administrador</div>
       <div class="user-role">Admin del sistema</div>
     </div>
-    <button class="btn-logout" onclick="window.location.href='login.html'" title="Cerrar sesion">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <button class="btn-logout" onclick="window.location.href='login.html'" title="Cerrar sesión">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16,17 21,12 16,7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
     </button>
   </div>
 </aside>
@@ -76,334 +143,847 @@
 <main class="main">
   <div class="topbar">
     <div>
-      <div class="page-title" id="page-title">Dashboard</div>
-      <div class="page-subtitle" id="page-subtitle">Resumen general del sistema</div>
+      <div class="page-title" id="page-title">Gestión de Proyectos</div>
+      <div class="page-subtitle" id="page-subtitle">Crea, edita y asigna proyectos a alumnos</div>
     </div>
     <div class="topbar-actions" id="topbar-actions"></div>
   </div>
+
   <div class="content">
 
     <!-- DASHBOARD -->
-    <div class="section active" id="section-dashboard">
+    <div class="section" id="section-dashboard">
       <div class="stats-grid">
-        <div class="stat-card" style="--card-color:var(--blue)"><div class="stat-label">Usuarios activos</div><div class="stat-value" id="stat-usuarios">0</div><div class="stat-sub">Alumnos y profesores</div></div>
-        <div class="stat-card" style="--card-color:var(--accent)"><div class="stat-label">Eventos activos</div><div class="stat-value" id="stat-eventos">0</div><div class="stat-sub">Proximos y en curso</div></div>
-        <div class="stat-card" style="--card-color:var(--orange)"><div class="stat-label">Proyectos pendientes</div><div class="stat-value" id="stat-pendientes">0</div><div class="stat-sub">Esperando aprobacion</div></div>
-        <div class="stat-card" style="--card-color:var(--green)"><div class="stat-label">Proyectos aceptados</div><div class="stat-value" id="stat-aceptados">0</div><div class="stat-sub">En todos los eventos</div></div>
+        <div class="stat-card" style="--card-color: var(--blue)">
+          <div class="stat-label">Usuarios activos</div>
+          <div class="stat-value" id="stat-usuarios">0</div>
+          <div class="stat-sub">Alumnos y profesores</div>
+        </div>
+
+        <div class="stat-card" style="--card-color: var(--accent)">
+          <div class="stat-label">Eventos activos</div>
+          <div class="stat-value" id="stat-eventos">0</div>
+          <div class="stat-sub">Próximos y en curso</div>
+        </div>
+
+        <div class="stat-card" style="--card-color: var(--orange)">
+          <div class="stat-label">Proyectos pendientes</div>
+          <div class="stat-value" id="stat-pendientes">0</div>
+          <div class="stat-sub">Esperando aprobación</div>
+        </div>
+
+        <div class="stat-card" style="--card-color: var(--green)">
+          <div class="stat-label">Proyectos aceptados</div>
+          <div class="stat-value" id="stat-aceptados">0</div>
+          <div class="stat-sub">En todos los eventos</div>
+        </div>
       </div>
+
       <div class="table-wrap">
-        <div class="table-header"><span class="table-title">Proyectos recientes pendientes</span><button class="btn btn-ghost btn-sm" onclick="showSection('proyectos',null)">Ver todos</button></div>
-        <table><thead><tr><th>Proyecto</th><th>Alumno</th><th>Evento</th><th>Fecha</th><th>Estado</th><th>Accion</th></tr></thead>
-        <tbody id="dash-proyectos-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table>
+        <div class="table-header">
+          <span class="table-title">Proyectos recientes pendientes</span>
+          <button class="btn btn-ghost btn-sm" onclick="showSection('proyectos', null)">Ver todos</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Proyecto</th>
+              <th>Alumno</th>
+              <th>Evento</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="dash-proyectos-tbody">
+            <tr>
+              <td colspan="6" class="empty-cell">Cargando...</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
     <!-- USUARIOS -->
     <div class="section" id="section-usuarios">
       <div class="table-wrap">
-        <div class="table-header"><span class="table-title">Usuarios del sistema</span>
-          <div style="display:flex;gap:10px;align-items:center">
+        <div class="table-header">
+          <span class="table-title">Usuarios del sistema</span>
+
+          <div class="table-actions">
             <div class="search-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
               <input class="search-input" placeholder="Buscar usuario..." oninput="filterUsuarios(this.value)">
             </div>
+
             <button class="btn btn-primary btn-sm" onclick="openModal('modal-usuario')">+ Nuevo usuario</button>
           </div>
         </div>
-        <table><thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
-        <tbody id="usuarios-tbody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="usuarios-tbody">
+            <tr>
+              <td colspan="5" class="empty-cell">Cargando...</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
     <!-- EVENTOS -->
     <div class="section" id="section-eventos">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
-        <button class="btn btn-primary" onclick="openModal('modal-evento')">+ Nuevo evento</button>
+      <div class="section-actions">
+        <button class="btn btn-primary" onclick="abrirModalEvento()">+ Nuevo evento</button>
       </div>
-      <div class="events-grid" id="eventos-grid"><div style="color:var(--text-muted);font-size:13px">Cargando eventos...</div></div>
+
+      <div class="events-grid" id="eventos-grid">
+        <div class="empty-text">Cargando eventos...</div>
+      </div>
     </div>
 
     <!-- HORARIOS -->
     <div class="section" id="section-horarios">
       <div class="tabs">
-        <button class="tab active" onclick="switchTab(this,'tab-horarios')">Horarios</button>
-        <button class="tab" onclick="switchTab(this,'tab-aulas')">Aulas</button>
+        <button class="tab active" onclick="switchTab(this, 'tab-horarios')">Horarios</button>
+        <button class="tab" onclick="switchTab(this, 'tab-aulas')">Aulas</button>
       </div>
+
       <div id="tab-horarios">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <div>
-            <label style="font-size:12px;color:var(--text-muted);margin-right:8px">Evento:</label>
-            <select class="form-control" style="width:auto;display:inline-block" id="select-evento-horario" onchange="loadHorarios()"><option value="">Seleccionar evento...</option></select>
+        <div class="toolbar-row">
+          <div class="inline-field">
+            <label>Evento:</label>
+            <select class="form-control" id="select-evento-horario" onchange="loadHorarios()">
+              <option value="">Seleccionar evento...</option>
+            </select>
           </div>
+
           <button class="btn btn-primary btn-sm" onclick="openModal('modal-horario')">+ Agregar horario</button>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>Aula</th><th>Hora inicio</th><th>Hora fin</th><th>Disponible</th><th>Acciones</th></tr></thead>
-        <tbody id="horarios-tbody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Selecciona un evento</td></tr></tbody></table></div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Aula</th>
+                <th>Hora inicio</th>
+                <th>Hora fin</th>
+                <th>Disponible</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="horarios-tbody">
+              <tr>
+                <td colspan="5" class="empty-cell">Selecciona un evento</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div id="tab-aulas" style="display:none">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+
+      <div id="tab-aulas" style="display: none">
+        <div class="section-actions">
           <button class="btn btn-primary btn-sm" onclick="openModal('modal-aula')">+ Nueva aula</button>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Capacidad</th><th>Acciones</th></tr></thead>
-        <tbody id="aulas-tbody"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table></div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Capacidad</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="aulas-tbody">
+              <tr>
+                <td colspan="3" class="empty-cell">Cargando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
     <!-- RUBRICAS -->
     <div class="section" id="section-rubricas">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
-        <button class="btn btn-primary" onclick="openModalRubrica()">+ Nueva rubrica</button>
+      <div class="section-actions">
+        <button class="btn btn-primary" onclick="openModalRubrica()">+ Nueva rúbrica</button>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Creada por</th><th>Criterios</th><th>Estado</th><th>Acciones</th></tr></thead>
-      <tbody id="rubricas-tbody"><tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Creada por</th>
+              <th>Criterios</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="rubricas-tbody">
+            <tr>
+              <td colspan="5" class="empty-cell">Cargando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- APROBAR PROYECTOS (eventos) -->
+    <!-- APROBAR PROYECTOS -->
     <div class="section" id="section-proyectos">
-      <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center">
-        <label style="font-size:12px;color:var(--text-muted)">Evento:</label>
-        <select class="form-control" style="width:auto;display:inline-block" id="select-evento-proyectos" onchange="loadProyectosEvento()"><option value="">Todos los eventos</option></select>
-        <select class="form-control" style="width:auto;display:inline-block" id="filter-estado-proyecto" onchange="loadProyectosEvento()">
-          <option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="aceptado">Aceptado</option><option value="rechazado">Rechazado</option>
+      <div class="toolbar-row toolbar-left">
+        <div class="inline-field">
+          <label>Evento:</label>
+          <select class="form-control" id="select-evento-proyectos" onchange="loadProyectosEvento()">
+            <option value="">Todos los eventos</option>
+          </select>
+        </div>
+
+        <select class="form-control select-auto" id="filter-estado-proyecto" onchange="loadProyectosEvento()">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="aceptado">Aceptado</option>
+          <option value="rechazado">Rechazado</option>
         </select>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Lider</th><th>Evento</th><th>Inscrito</th><th>Estado</th><th>Acciones</th></tr></thead>
-      <tbody id="proyectos-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody></table></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Proyecto</th>
+              <th>Alumno</th>
+              <th>Profesor</th>
+              <th>Cita</th>
+              <th>Estado</th>
+              <th>QR</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="proyectos-tbody">
+            <tr>
+              <td colspan="6" class="empty-cell">Cargando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- GESTIÓN DE PROYECTOS -->
-    <!-- #EXTRA21 corregido: botón "Ver" añadido en panel-admin.js > renderGPList() -->
-    <div class="section" id="section-gestion-proyectos">
-      <div id="gp-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px"></div>
+    <div class="section" id="section-citas">
+      <div class="table-wrap">
+        <div class="table-header">
+          <div>
+            <span class="table-title">Citas y QR de evaluacion</span>
+            <p class="muted-p">Aprueba o rechaza las citas solicitadas. Al aprobar, el QR queda disponible para el flujo de evaluacion.</p>
+          </div>
+
+          <div class="table-actions">
+            <button class="btn btn-ghost btn-sm" onclick="loadCitasAdmin()">Actualizar</button>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Proyecto</th>
+              <th>Alumno</th>
+              <th>Profesor</th>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Sala</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="citas-tbody">
+            <tr>
+              <td colspan="8" class="empty-cell">Cargando citas...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section active" id="section-gestion-proyectos">
       <div class="table-wrap">
         <div class="table-header">
           <span class="table-title">Proyectos</span>
-          <div style="display:flex;gap:8px;align-items:center">
+
+          <div class="table-actions">
             <div class="search-wrap">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="M21 21l-4.35-4.35"></path>
+              </svg>
               <input class="search-input" placeholder="Buscar proyecto..." oninput="filterGP(this.value)">
             </div>
-            <select class="form-control" style="width:auto" id="gp-filter-estatus" onchange="renderGP()">
+
+            <select class="form-control select-auto" id="gp-filter-estatus" onchange="renderGP()">
               <option value="">Todos</option>
               <option value="Pendiente">Pendiente</option>
               <option value="En progreso">En progreso</option>
               <option value="Completado">Completado</option>
             </select>
+
             <button class="btn btn-primary" onclick="openModalNuevoProyecto()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
               Nuevo proyecto
             </button>
           </div>
         </div>
+
         <table>
-          <thead><tr><th>Título</th><th>Alumno</th><th>Profesor</th><th>Progreso</th><th>Estado</th><th>Acciones</th></tr></thead>
-          <tbody id="gp-tbody"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Cargando...</td></tr></tbody>
+          <thead>
+            <tr>
+              <th>Título</th>
+              <th>Alumno</th>
+              <th>Profesor</th>
+              <th>Cita</th>
+              <th>Progreso</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="gp-tbody">
+            <tr>
+              <td colspan="6" class="empty-cell">Cargando...</td>
+            </tr>
+          </tbody>
         </table>
       </div>
+
+      <div id="gp-stats" class="mini-stats-grid"></div>
     </div>
 
     <!-- ASIGNAR EVALUADORES -->
     <div class="section" id="section-evaluadores">
-      <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center">
-        <label style="font-size:12px;color:var(--text-muted)">Evento:</label>
-        <select class="form-control" style="width:auto;display:inline-block" id="select-evento-eval" onchange="loadProyectosEval()"><option value="">Seleccionar evento...</option></select>
+      <div class="toolbar-row toolbar-left">
+        <div class="inline-field">
+          <label>Evento:</label>
+          <select class="form-control" id="select-evento-eval" onchange="loadProyectosEval()">
+            <option value="">Seleccionar evento...</option>
+          </select>
+        </div>
       </div>
-      <div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Aula / Horario</th><th>Evaluadores asignados</th><th>Accion</th></tr></thead>
-      <tbody id="evaluadores-tbody"><tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">Selecciona un evento</td></tr></tbody></table></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Proyecto</th>
+              <th>Aula / Horario</th>
+              <th>Evaluadores asignados</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="evaluadores-tbody">
+            <tr>
+              <td colspan="4" class="empty-cell">Selecciona un evento</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ANALITICAS -->
+    <div class="section" id="section-analiticas">
+      <div class="analytics-card">
+        <div class="analytics-title">Comparativa entre eventos</div>
+        <div class="analytics-subtitle">Desempeño general por evento: proyectos, evaluaciones y puntajes</div>
+
+        <div id="comparativa-content">
+          <div class="empty-text">Cargando comparativa...</div>
+        </div>
+      </div>
+
+      <div class="analytics-card">
+        <div class="analytics-head">
+          <div>
+            <div class="analytics-title">Ranking de proyectos</div>
+            <div class="analytics-subtitle">Proyectos ordenados por puntaje total en el evento seleccionado</div>
+          </div>
+
+          <div class="inline-field">
+            <label>Evento:</label>
+            <select class="form-control" id="select-evento-ranking" onchange="loadRankingEvento()">
+              <option value="">Seleccionar evento...</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="ranking-content">
+          <div class="empty-text padded">Selecciona un evento para ver el ranking.</div>
+        </div>
+      </div>
     </div>
 
   </div>
 </main>
 
-<!-- MODALES -->
+<!-- MODAL USUARIO -->
 <div class="modal-overlay" id="modal-usuario">
   <div class="modal">
-    <div class="modal-head"><h3 id="modal-usuario-title">Nuevo usuario</h3><button class="modal-close" onclick="closeModal('modal-usuario')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-head">
+      <h3 id="modal-usuario-title">Nuevo usuario</h3>
+      <button class="modal-close" onclick="closeModal('modal-usuario')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
     <div class="modal-body">
       <input type="hidden" id="usuario-id">
+
       <div class="form-row">
-        <div class="form-group"><label>Nombre completo</label><input class="form-control" id="u-nombre" placeholder="Ej. Juan Perez"></div>
-        <div class="form-group"><label>Rol</label><select class="form-control" id="u-rol"><option value="Alumno">Alumno</option><option value="Profesor">Profesor</option><option value="Admin">Administrador</option></select></div>
+        <div class="form-group">
+          <label>Nombre completo</label>
+          <input class="form-control" id="u-nombre" placeholder="Ej. Juan Pérez">
+        </div>
+
+        <div class="form-group">
+          <label>Rol</label>
+          <select class="form-control" id="u-rol">
+            <option value="Alumno">Alumno</option>
+            <option value="Profesor">Profesor</option>
+            <option value="Admin">Administrador</option>
+          </select>
+        </div>
       </div>
-      <div class="form-group"><label>Correo institucional</label><input class="form-control" id="u-email" type="email" placeholder="usuario@universidad.edu.mx"></div>
-      <div class="form-group"><label>Contrasena <span id="u-pass-hint" style="color:var(--text-muted);font-size:11px">(dejar vacio para no cambiar)</span></label><input class="form-control" id="u-password" type="password" placeholder="..."></div>
+
+      <div class="form-group">
+        <label>Correo institucional</label>
+        <input class="form-control" id="u-email" type="email" placeholder="usuario@universidad.edu.mx">
+      </div>
+
+      <div class="form-group">
+        <label>
+          Contraseña
+          <span id="u-pass-hint" class="input-hint">(dejar vacío para no cambiar)</span>
+        </label>
+        <input class="form-control" id="u-password" type="password" placeholder="Contraseña">
+      </div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-usuario')">Cancelar</button><button class="btn btn-primary" onclick="saveUsuario()">Guardar</button></div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveUsuario()">Guardar</button>
+    </div>
   </div>
 </div>
 
+<!-- MODAL EVENTO -->
 <div class="modal-overlay" id="modal-evento">
   <div class="modal">
-    <div class="modal-head"><h3 id="modal-evento-title">Nuevo evento</h3><button class="modal-close" onclick="closeModal('modal-evento')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-head">
+      <h3 id="modal-evento-title">Nuevo evento</h3>
+      <button class="modal-close" onclick="closeModal('modal-evento')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
     <div class="modal-body">
       <input type="hidden" id="evento-id">
-      <div class="form-group"><label>Nombre del evento</label><input class="form-control" id="ev-nombre" placeholder="Ej. Feria de Proyectos 2025"></div>
-      <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="ev-desc" rows="3" placeholder="Descripcion del evento..." style="resize:vertical"></textarea></div>
-      <div class="form-row">
-        <div class="form-group"><label>Fecha</label><input class="form-control" id="ev-fecha" type="date"></div>
-        <div class="form-group"><label>Estado</label><select class="form-control" id="ev-estado"><option value="proximo">Proximo</option><option value="activo">Activo</option><option value="no_disponible">No disponible</option><option value="finalizado">Finalizado</option></select></div>
+
+      <div class="form-group">
+        <label>Nombre del evento</label>
+        <input class="form-control" id="ev-nombre" placeholder="Ej. Feria de Proyectos 2026">
       </div>
+
+      <div class="form-group">
+        <label>Descripción</label>
+        <textarea class="form-control" id="ev-desc" rows="3" placeholder="Descripción del evento..." style="resize: vertical"></textarea>
+      </div>
+
       <div class="form-row">
-        <div class="form-group"><label>Hora inicio</label><input class="form-control" id="ev-inicio" type="time"></div>
-        <div class="form-group"><label>Hora fin</label><input class="form-control" id="ev-fin" type="time"></div>
+        <div class="form-group">
+          <label>Fecha</label>
+          <input class="form-control" id="ev-fecha" type="date">
+        </div>
+
+        <div class="form-group">
+          <label>Estado</label>
+          <select class="form-control" id="ev-estado">
+            <option value="proximo">Próximo</option>
+            <option value="activo">Activo</option>
+            <option value="no_disponible">No disponible</option>
+            <option value="finalizado">Finalizado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Hora inicio</label>
+          <input class="form-control" id="ev-inicio" type="time">
+        </div>
+
+        <div class="form-group">
+          <label>Hora fin</label>
+          <input class="form-control" id="ev-fin" type="time">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Rúbrica de evaluación</label>
+        <select class="form-control" id="ev-rubrica">
+          <option value="">Sin rúbrica</option>
+        </select>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-evento')">Cancelar</button><button class="btn btn-primary" onclick="saveEvento()">Guardar</button></div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-evento')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEvento()">Guardar</button>
+    </div>
   </div>
 </div>
 
+<!-- MODAL AULA -->
 <div class="modal-overlay" id="modal-aula">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-head"><h3>Nueva aula</h3><button class="modal-close" onclick="closeModal('modal-aula')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Nombre del aula</label><input class="form-control" id="aula-nombre" placeholder="Ej. Aula 301"></div>
-      <div class="form-group"><label>Capacidad</label><input class="form-control" id="aula-capacidad" type="number" placeholder="Ej. 30"></div>
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3>Nueva aula</h3>
+      <button class="modal-close" onclick="closeModal('modal-aula')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-aula')">Cancelar</button><button class="btn btn-primary" onclick="saveAula()">Guardar</button></div>
-  </div>
-</div>
 
-<div class="modal-overlay" id="modal-horario">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-head"><h3>Agregar horario</h3><button class="modal-close" onclick="closeModal('modal-horario')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Aula</label><select class="form-control" id="hor-aula"></select></div>
-      <div class="form-row">
-        <div class="form-group"><label>Hora inicio</label><input class="form-control" id="hor-inicio" type="time"></div>
-        <div class="form-group"><label>Hora fin</label><input class="form-control" id="hor-fin" type="time"></div>
+      <div class="form-group">
+        <label>Nombre del aula</label>
+        <input class="form-control" id="aula-nombre" placeholder="Ej. Aula 301">
+      </div>
+
+      <div class="form-group">
+        <label>Capacidad</label>
+        <input class="form-control" id="aula-capacidad" type="number" placeholder="Ej. 30">
       </div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-horario')">Cancelar</button><button class="btn btn-primary" onclick="saveHorario()">Guardar</button></div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-aula')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAula()">Guardar</button>
+    </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-rubrica">
-  <div class="modal" style="max-width:1100px;width:min(1100px,96vw)">
-    <div class="modal-head"><h3>Nueva rubrica</h3><button class="modal-close" onclick="closeModal('modal-rubrica')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+<!-- MODAL HORARIO -->
+<div class="modal-overlay" id="modal-horario">
+  <div class="modal modal-md">
+    <div class="modal-head">
+      <h3>Agregar horario</h3>
+      <button class="modal-close" onclick="closeModal('modal-horario')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
     <div class="modal-body">
-      <div class="form-group"><label>Nombre de la rubrica</label><input class="form-control" id="rub-nombre" placeholder="Ej. Rubrica Feria de Proyectos"></div>
-      <div class="form-group"><label>Descripcion</label><textarea class="form-control" id="rub-desc" rows="2" style="resize:vertical" placeholder="Descripcion opcional..."></textarea></div>
-      <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:18px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="form-group">
+        <label>Aula</label>
+        <select class="form-control" id="hor-aula"></select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Hora inicio</label>
+          <input class="form-control" id="hor-inicio" type="time">
+        </div>
+
+        <div class="form-group">
+          <label>Hora fin</label>
+          <input class="form-control" id="hor-fin" type="time">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-horario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveHorario()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RUBRICA -->
+<div class="modal-overlay" id="modal-rubrica">
+  <div class="modal modal-xl">
+    <div class="modal-head">
+      <h3>Nueva rúbrica</h3>
+      <button class="modal-close" onclick="closeModal('modal-rubrica')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Nombre de la rúbrica</label>
+        <input class="form-control" id="rub-nombre" placeholder="Ej. Rúbrica Feria de Proyectos">
+      </div>
+
+      <div class="form-group">
+        <label>Descripción</label>
+        <textarea class="form-control" id="rub-desc" rows="2" style="resize: vertical" placeholder="Descripción opcional..."></textarea>
+      </div>
+
+      <div class="rubrica-builder">
+        <div class="rubrica-builder-head">
           <div>
-            <label style="font-size:12px;color:var(--text-dim);font-weight:600;display:block">Criterios de evaluacion</label>
-            <span style="font-size:12px;color:var(--text-muted)">Cada criterio incluye 4 niveles editables estilo Classroom.</span>
+            <label>Criterios de evaluación</label>
+            <span>Cada criterio incluye 4 niveles editables estilo Classroom.</span>
           </div>
+
           <button class="btn btn-ghost btn-sm" onclick="addCriterio()">+ Agregar criterio</button>
         </div>
-        <div style="display:grid;grid-template-columns:minmax(280px,320px) minmax(0,1fr);gap:12px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;margin-bottom:10px">
-          <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)">Configuracion del criterio</div>
-          <div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-dim)">Niveles de desempeño</div>
+
+        <div class="rubrica-grid-head">
+          <div>Configuración del criterio</div>
+          <div>Niveles de desempeño</div>
         </div>
-        <div id="criterios-list" style="display:flex;flex-direction:column;gap:14px"></div>
+
+        <div id="criterios-list" class="criterios-list"></div>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-rubrica')">Cancelar</button><button class="btn btn-primary" onclick="saveRubrica()">Guardar</button></div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-rubrica')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveRubrica()">Guardar</button>
+    </div>
   </div>
 </div>
 
+<!-- MODAL EVALUADORES -->
 <div class="modal-overlay" id="modal-evaluadores">
   <div class="modal">
-    <div class="modal-head"><h3 id="modal-eval-title">Asignar evaluadores</h3><button class="modal-close" onclick="closeModal('modal-evaluadores')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-head">
+      <h3 id="modal-eval-title">Asignar evaluadores</h3>
+      <button class="modal-close" onclick="closeModal('modal-evaluadores')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
     <div class="modal-body">
       <input type="hidden" id="eval-ep-id">
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Selecciona hasta 3 profesores evaluadores.</p>
-      <div id="profesores-eval-list" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto"></div>
+
+      <p class="muted-p">Selecciona hasta 3 profesores evaluadores.</p>
+
+      <div id="profesores-eval-list" class="scroll-list"></div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-evaluadores')">Cancelar</button><button class="btn btn-primary" onclick="saveEvaluadores()">Guardar asignacion</button></div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-evaluadores')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEvaluadores()">Guardar asignación</button>
+    </div>
   </div>
 </div>
 
 <!-- MODAL PROYECTO -->
 <div class="modal-overlay" id="modal-proyecto">
-  <div class="modal" style="max-width:560px">
+  <div class="modal modal-lg">
     <div class="modal-head">
       <h3 id="modal-proyecto-title">Nuevo proyecto</h3>
-      <button class="modal-close" onclick="closeModal('modal-proyecto')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="modal-close" onclick="closeModal('modal-proyecto')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
+
     <div class="modal-body">
       <input type="hidden" id="proy-id">
-      <div class="form-group"><label>Título *</label><input class="form-control" id="proy-titulo" placeholder="Nombre del proyecto"></div>
-      <div class="form-group"><label>Descripción</label><textarea class="form-control" id="proy-desc" rows="3" placeholder="Descripción breve" style="resize:vertical"></textarea></div>
-      <div class="form-row">
-        <div class="form-group"><label>Fecha inicio *</label><input type="date" class="form-control" id="proy-inicio"></div>
-        <div class="form-group"><label>Fecha fin</label><input type="date" class="form-control" id="proy-fin"></div>
+
+      <div class="form-group">
+        <label>Título *</label>
+        <input class="form-control" id="proy-titulo" placeholder="Nombre del proyecto">
       </div>
+
+      <div class="form-group">
+        <label>Descripción</label>
+        <textarea class="form-control" id="proy-desc" rows="3" placeholder="Descripción breve" style="resize: vertical"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Categoría / línea temática *</label>
+        <input class="form-control" id="proy-categoria" placeholder="Ej. Tecnología, medio ambiente, salud, educación">
+      </div>
+
       <div class="form-row">
-        <div class="form-group"><label>Alumno *</label><select class="form-control" id="proy-alumno"><option value="">Seleccionar alumno...</option></select></div>
-        <div class="form-group"><label>Profesor</label><select class="form-control" id="proy-profesor"><option value="">Sin asignar</option></select></div>
+        <div class="form-group">
+          <label>Fecha inicio *</label>
+          <input type="date" class="form-control" id="proy-inicio">
+        </div>
+
+        <div class="form-group">
+          <label>Fecha fin</label>
+          <input type="date" class="form-control" id="proy-fin">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Alumno *</label>
+          <select class="form-control" id="proy-alumno">
+            <option value="">Seleccionar alumno...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Profesor</label>
+          <select class="form-control" id="proy-profesor">
+            <option value="">Sin asignar</option>
+          </select>
+        </div>
       </div>
     </div>
+
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-proyecto')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveProyecto()">Guardar proyecto</button>
+      <button class="btn btn-primary" id="btn-save-proyecto" onclick="saveProyecto()">Guardar proyecto</button>
     </div>
   </div>
 </div>
 
 <!-- MODAL ETAPAS -->
 <div class="modal-overlay" id="modal-etapas">
-  <div class="modal" style="max-width:600px">
+  <div class="modal modal-lg">
     <div class="modal-head">
       <h3 id="modal-etapas-title">Etapas del proyecto</h3>
-      <button class="modal-close" onclick="closeModal('modal-etapas')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="modal-close" onclick="closeModal('modal-etapas')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
+
     <div class="modal-body">
       <input type="hidden" id="etapas-proy-id">
-      <div id="etapas-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;max-height:300px;overflow-y:auto"></div>
-      <div style="border-top:1px solid var(--border);padding-top:16px">
-        <div style="font-size:12px;font-weight:500;color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Agregar etapa</div>
-        <div class="form-group"><label>Nombre *</label><input class="form-control" id="nueva-etapa-nombre" placeholder="Ej. Investigación inicial"></div>
-        <div class="form-row">
-          <div class="form-group"><label>Descripción</label><input class="form-control" id="nueva-etapa-desc" placeholder="Opcional"></div>
-          <div class="form-group"><label>Fecha límite</label><input type="date" class="form-control" id="nueva-etapa-fecha"></div>
+
+      <div id="etapas-list" class="scroll-list etapas-list"></div>
+
+      <div class="add-stage-box">
+        <div class="box-title-small">Agregar etapa</div>
+
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input class="form-control" id="nueva-etapa-nombre" placeholder="Ej. Investigación inicial">
         </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Descripción</label>
+            <input class="form-control" id="nueva-etapa-desc" placeholder="Opcional">
+          </div>
+
+          <div class="form-group">
+            <label>Fecha límite</label>
+            <input type="date" class="form-control" id="nueva-etapa-fecha">
+          </div>
+        </div>
+
         <button class="btn btn-primary btn-sm" onclick="agregarEtapa()">+ Agregar etapa</button>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal('modal-etapas')">Cerrar</button></div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-etapas')">Cerrar</button>
+    </div>
   </div>
 </div>
 
 <!-- MODAL VER DETALLES DEL PROYECTO -->
 <div class="modal-overlay" id="modal-detalles-proy">
-  <div class="modal" style="max-width:720px">
+  <div class="modal modal-xl">
     <div class="modal-head">
       <h3 id="det-modal-title">Detalles del proyecto</h3>
-      <button class="modal-close" onclick="closeModal('modal-detalles-proy')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="modal-close" onclick="closeModal('modal-detalles-proy')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
+
     <div class="modal-body" id="det-modal-body">
-      <div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando...</div>
+      <div class="empty-text padded">Cargando...</div>
     </div>
+
     <div class="modal-foot" id="det-modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-detalles-proy')">Cerrar</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL SUBIR DOC ADMIN -->
+<!-- MODAL SUBIR DOCUMENTO ADMIN -->
 <div class="modal-overlay" id="modal-subir-doc-admin">
-  <div class="modal" style="max-width:480px">
+  <div class="modal modal-md">
     <div class="modal-head">
       <h3>Subir documento de análisis</h3>
-      <button class="modal-close" onclick="cerrarSubirDocAdmin()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <button class="modal-close" onclick="cerrarSubirDocAdmin()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
+
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
+      <p class="muted-p">
         Como administrador, puedes subir documentos de análisis para complementar la revisión.
         Estos documentos serán visibles para el profesor y el alumno.
       </p>
+
       <div class="form-group">
         <label>Archivo *</label>
-        <input type="file" id="doc-file-admin" class="form-control"
-               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.txt,.zip">
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Tamaño máximo: 25 MB</div>
+        <input
+          type="file"
+          id="doc-file-admin"
+          class="form-control"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.txt,.zip"
+        >
+        <div class="input-hint">Tamaño máximo: 25 MB</div>
       </div>
+
       <div class="form-group">
         <label>Descripción</label>
         <input type="text" id="doc-desc-admin" class="form-control" placeholder="Describe el contenido del documento">
       </div>
     </div>
+
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="cerrarSubirDocAdmin()">Cancelar</button>
       <button class="btn btn-primary" id="btn-subir-doc-admin" onclick="subirDocumentoAdmin()">Subir documento</button>

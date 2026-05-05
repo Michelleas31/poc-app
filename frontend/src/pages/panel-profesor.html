@@ -4,109 +4,434 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel Profesor — ProjectManager</title>
+
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../styles/panel-admin.css">
-  <style>
-    .proyectos-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
-    .proyecto-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; cursor:pointer; transition:border-color .2s,transform .15s; }
-    .proyecto-card:hover { border-color:var(--blue); transform:translateY(-2px); }
-    .proyecto-card-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:10px; }
-    .proyecto-titulo { font-family:'Syne',sans-serif; font-weight:700; font-size:15px; color:var(--text); }
-    .proyecto-alumno { font-size:12px; color:var(--text-muted); margin-top:4px; }
-    .proyecto-desc { font-size:13px; color:var(--text-dim); line-height:1.5; margin:10px 0; }
-    .progress-bar-wrap { margin-top:10px; }
-    .progress-bar-label { display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:5px; }
-    .progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
-    .progress-bar-fill { height:100%; border-radius:3px; transition:width .5s ease; }
-    .proyecto-footer { display:flex; gap:8px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); flex-wrap:wrap; font-size:12px; color:var(--text-muted); }
-    .detalle-back { display:flex; align-items:center; gap:6px; background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:13px; padding:6px 10px; border-radius:8px; margin-bottom:20px; }
-    .detalle-back:hover { background:var(--surface2); color:var(--text); }
-    .detalle-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:20px; }
-    .meta-card { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
-    .meta-label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
-    .meta-value { font-size:14px; font-weight:500; color:var(--text); }
-    .etapa-item { display:flex; align-items:center; gap:12px; padding:14px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; }
-    .section-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:20px; }
-    .section-card-title { font-family:'Syne',sans-serif; font-weight:700; font-size:16px; margin-bottom:16px; }
-  </style>
+  <link rel="stylesheet" href="../styles/panel-profesor.css?v=20260503-profesor-pro-3">
+
+  <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
+
 <body>
-<aside class="sidebar">
-  <div class="sidebar-logo">
-    <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/></svg></div>
-    <span class="logo-name">ProjectManager</span>
-    <span class="logo-badge">Profesor</span>
-  </div>
-  <nav class="sidebar-nav">
-    <span class="nav-section-label">General</span>
-    <button class="nav-item active" onclick="showSection('mis-proyectos',this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      Mis proyectos
-    </button>
-  </nav>
-  <div class="sidebar-user">
-    <div class="avatar" id="nav-avatar">P</div>
-    <div class="user-info"><div class="user-name" id="nav-nombre">Profesor</div><div class="user-role">Profesor</div></div>
-    <button class="btn-logout" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
-  </div>
-</aside>
 
-<main class="main">
-  <div class="topbar">
-    <div><div class="page-title" id="page-title">Mis proyectos</div><div class="page-subtitle" id="page-subtitle">Proyectos asignados a ti</div></div>
-  </div>
-  <div class="content">
-    <div class="section active" id="section-mis-proyectos">
-      <div class="stats-grid" id="prof-stats"></div>
-      <div id="proyectos-grid-prof"></div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          <path d="M14 17.5h7M17.5 14v7"></path>
+        </svg>
+      </div>
+      <div>
+        <span class="logo-name">ProjectManager</span>
+        <span class="logo-badge">Profesor</span>
+      </div>
     </div>
-    <div class="section" id="section-detalle">
-      <button class="detalle-back" onclick="showSection('mis-proyectos')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><polyline points="15,18 9,12 15,6"/></svg>
-        Volver a mis proyectos
+
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Proyectos</span>
+
+      <button class="nav-item active" onclick="showSection('mis-proyectos', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <path d="M9 12l2 2 4-4"></path>
+        </svg>
+        Mis proyectos
       </button>
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap">
-        <div style="flex:1">
-          <div class="page-title" id="det-titulo" style="font-size:22px;font-family:'Syne',sans-serif;font-weight:700"></div>
-          <div style="font-size:13px;color:var(--text-muted);margin-top:4px" id="det-alumno"></div>
-        </div>
-        <span class="badge" id="det-badge"></span>
-      </div>
-      <div class="detalle-meta" id="det-meta"></div>
-      <div class="section-card">
-        <div class="progress-bar-wrap" style="margin:0">
-          <div class="progress-bar-label"><span style="font-weight:500;font-size:14px">Progreso general</span><span id="det-progreso-pct" style="font-size:14px;font-weight:500"></span></div>
-          <div class="progress-bar" style="height:10px;border-radius:6px;margin-top:8px"><div class="progress-bar-fill" id="det-progreso-bar" style="width:0%"></div></div>
-        </div>
-      </div>
-      <div class="section-card">
-        <div class="section-card-title">Etapas del proyecto</div>
-        <div id="det-etapas" style="display:flex;flex-direction:column;gap:10px"></div>
-      </div>
-    </div>
-  </div>
-</main>
 
-<!-- MODAL: Revisar proyecto (ver detalle + aceptar/rechazar) -->
-<div class="modal-overlay" id="modal-revisar">
-  <div class="modal" style="max-width:720px">
-    <div class="modal-head">
-      <h3 id="rev-title">Revisar proyecto</h3>
-      <button class="modal-close" onclick="cerrarRevisar()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <button class="nav-item" onclick="showSection('proyectos-disponibles', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <path d="M12 8v8M8 12h8"></path>
+        </svg>
+        Proyectos disponibles
+      </button>
+
+      <span class="nav-section-label">Evaluación</span>
+
+      <button class="nav-item" onclick="showSection('mis-citas', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <path d="M16 2v4M8 2v4M3 10h18"></path>
+        </svg>
+        Mis citas
+      </button>
+
+      <button class="nav-item" onclick="showSection('escanear', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+          <path d="M14 14h.01M14 17h3M17 14v7M20 14h.01"></path>
+        </svg>
+        Escanear QR / Evaluar
+      </button>
+
+      <span class="nav-section-label">Análisis</span>
+
+      <button class="nav-item" onclick="showSection('historial', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 6 13.5 15.5 8 10 1 17"></polyline>
+          <polyline points="17 6 23 6 23 12"></polyline>
+        </svg>
+        Historial
+      </button>
+
+      <button class="nav-item" onclick="showSection('indicadores', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="18" y="3" width="3" height="18"></rect>
+          <rect x="10" y="8" width="3" height="13"></rect>
+          <rect x="2" y="13" width="3" height="8"></rect>
+        </svg>
+        Indicadores
+      </button>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="avatar" id="nav-avatar">P</div>
+      <div class="user-info">
+        <div class="user-name" id="nav-nombre">Profesor</div>
+        <div class="user-role">Profesor</div>
+      </div>
+      <button class="btn-logout" onclick="logout()" title="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16,17 21,12 16,7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
       </button>
     </div>
-    <div class="modal-body" id="rev-body">
-      <div style="color:var(--text-muted);font-size:13px;padding:16px">Cargando...</div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="page-title">Mis proyectos</div>
+        <div class="page-subtitle" id="page-subtitle">Proyectos asignados a ti</div>
+      </div>
     </div>
-    <div class="modal-foot" id="rev-foot">
-      <button class="btn btn-ghost" onclick="cerrarRevisar()">Cerrar</button>
+
+    <div class="content">
+
+      <!-- ── MIS PROYECTOS ───────────────────────────────────── -->
+      <section class="section active" id="section-mis-proyectos">
+        <div class="stats-grid" id="prof-stats"></div>
+
+        <div class="section-card">
+          <div class="section-card-title">Proyectos asignados</div>
+          <div id="proyectos-grid-prof">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── DETALLE PROYECTO (vista interna, sin nav) ───────── -->
+      <section class="section" id="section-detalle">
+        <div class="detalle-header">
+          <div class="detalle-header-main">
+            <button class="detalle-back" onclick="showSection('mis-proyectos', document.querySelectorAll('.nav-item')[0])">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15,18 9,12 15,6"></polyline>
+              </svg>
+              Volver a mis proyectos
+            </button>
+            <div class="detalle-title mt-12" id="det-titulo"></div>
+            <div class="detalle-subtitle" id="det-alumno"></div>
+          </div>
+          <span id="det-badge" class="badge badge-gray"></span>
+        </div>
+
+        <div class="section-card">
+          <div class="section-card-title">Progreso del proyecto</div>
+          <div id="det-progreso-pct" style="font-size:13px;color:var(--text-muted);margin-bottom:8px"></div>
+          <div class="progress-bar" style="height:8px">
+            <div class="progress-bar-fill" id="det-progreso-bar" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="detalle-meta" id="det-meta"></div>
+
+        <div class="section-card">
+          <div class="section-card-title">Etapas del alumno</div>
+          <div class="etapas-list" id="det-etapas">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PROYECTOS DISPONIBLES ───────────────────────────── -->
+      <section class="section" id="section-proyectos-disponibles">
+        <div class="section-card">
+          <div class="section-head">
+            <div>
+          <div class="section-card-title mb-0">Proyectos sin evaluador</div>
+              <p class="section-description">Ofrece tu disponibilidad para evaluar un proyecto.</p>
+            </div>
+            <input class="form-control search-input" id="filter-disponibles" placeholder="Buscar proyecto, alumno o categoría..." oninput="filtrarProyectosDisponibles()">
+          </div>
+          <div id="disponibles-grid">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── MIS CITAS ───────────────────────────────────────── -->
+      <section class="section" id="section-mis-citas">
+        <div class="section-card">
+          <div class="section-card-title">Citas de evaluación confirmadas</div>
+          <div id="citas-list">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── ESCANEAR QR / EVALUAR ───────────────────────────── -->
+      <section class="section" id="section-escanear">
+        <div class="qr-layout">
+
+          <!-- Panel izquierdo: cámara / token -->
+          <div class="section-card qr-panel qr-scan-card">
+            <div class="section-card-title">Escanear QR de evaluacion</div>
+            <p class="section-description">Carga el QR del alumno y abre la evaluacion con rubrica en una vista enfocada.</p>
+
+            <!-- Estado inicial -->
+            <div id="qr-start-wrap">
+              <div class="qr-start-wrap">
+                <div class="qr-hero-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                    <path d="M14 14h.01M14 17h3M17 14v7M20 14h.01"></path>
+                  </svg>
+                </div>
+                <p class="qr-help">Activa la camara para leer el codigo del alumno o introduce el token manualmente.</p>
+                <button class="btn btn-primary" id="btn-activar-cam" onclick="iniciarCamara()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                  Activar camara
+                </button>
+              </div>
+            </div>
+
+            <!-- Cámara activa -->
+            <div class="qr-camera-wrap" id="qr-cam-wrap">
+              <video id="qr-video" playsinline autoplay muted></video>
+              <canvas id="qr-canvas"></canvas>
+              <div class="qr-frame-overlay">
+                <div class="qr-frame"></div>
+              </div>
+            </div>
+
+            <div class="qr-status" id="qr-scan-status"></div>
+
+            <button class="btn btn-ghost btn-sm mb-12" id="btn-detener-cam" onclick="detenerCamara()">
+              Detener cámara
+            </button>
+
+            <!-- Token manual -->
+            <div class="manual-token-box">
+              <div class="label-mini">O introduce el token del QR</div>
+              <div class="manual-token-row token-search-row">
+                <input class="form-control token-input" id="qr-token-manual" placeholder="Pega el token aquí...">
+                <button class="btn btn-primary btn-sm" id="btn-buscar-token" onclick="procesarTokenManual()">Buscar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel derecho: resultado y rúbrica -->
+          <div class="qr-resultado">
+            <!-- Datos del proyecto -->
+            <div class="section-card" id="qr-resultado" style="display:none">
+              <div class="section-card-title">Datos del proyecto</div>
+              <div id="qr-proy-card"></div>
+            </div>
+
+            <!-- Rúbrica de evaluación (oculta hasta token válido) -->
+            <div class="section-card qr-rubrica-wrap" id="qr-rubrica-wrap" style="display:none">
+              <div class="section-card-title">
+                <span id="qr-rubrica-titulo">Rúbrica</span>
+                <div class="score-inline">
+                  <div id="qr-puntaje-display" class="score-inline-main">0</div>
+                  <div id="qr-pct-display" class="score-inline-sub">0%</div>
+                </div>
+              </div>
+              <div class="rubrica-criterios" id="qr-rubrica-criterios"></div>
+              <div class="form-group mt-16">
+                <label>Observaciones generales</label>
+                <textarea id="qr-eval-obs" class="form-control" rows="3" placeholder="Comentarios sobre el desempeño del proyecto..."></textarea>
+              </div>
+              <div class="actions-right mt-12">
+                <button class="btn btn-primary" id="btn-submit-qr-eval" onclick="submitEvaluacionQR()" style="display:none">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
+                    <polyline points="20,6 9,17 4,12"></polyline>
+                  </svg>
+                  Guardar evaluación
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── HISTORIAL ───────────────────────────────────────── -->
+      <section class="section" id="section-historial">
+        <div class="section-card">
+          <div class="section-card-title">Historial de evaluaciones por proyecto</div>
+          <div class="form-group" style="margin-bottom:16px">
+            <label>Seleccionar proyecto</label>
+            <select class="form-control" id="hist-select-proyecto" onchange="loadHistorialProyecto()">
+              <option value="">— Selecciona un proyecto —</option>
+            </select>
+          </div>
+          <div id="hist-content">
+            <div style="color:var(--text-muted);font-size:13px">Selecciona un proyecto para ver su historial.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── INDICADORES ─────────────────────────────────────── -->
+      <section class="section" id="section-indicadores">
+        <div class="section-card">
+          <div class="section-card-title">Indicadores de calidad por proyecto</div>
+          <div class="form-group" style="margin-bottom:16px">
+            <label>Seleccionar proyecto</label>
+            <select class="form-control" id="ind-select-proyecto" onchange="loadIndicadoresProyecto()">
+              <option value="">— Selecciona un proyecto —</option>
+            </select>
+          </div>
+          <div id="ind-content">
+            <div style="color:var(--text-muted);font-size:13px">Selecciona un proyecto para ver sus indicadores.</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- MODAL OFRECER DISPONIBILIDAD -->
+  <div class="modal-overlay" id="modal-ofrecer">
+    <div class="modal modal-md">
+      <div class="modal-head">
+        <h3>Ofrecer disponibilidad</h3>
+        <button class="modal-close" onclick="cerrarOfrecerDisp()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-info-box" id="ofrecer-proy-info">Proyecto seleccionado</div>
+        <div class="form-group">
+          <label>Fecha *</label>
+          <input type="date" id="ofrecer-fecha" class="form-control">
+        </div>
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>Hora inicio *</label>
+            <input type="time" id="ofrecer-hora-inicio" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>Hora fin *</label>
+            <input type="time" id="ofrecer-hora-fin" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Sala / Ubicación</label>
+          <input type="text" id="ofrecer-sala" class="form-control" placeholder="Ej. LIA, LAB-1, Sala 204...">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="cerrarOfrecerDisp()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-confirmar-disp" onclick="ofrecerDisponibilidad()">Confirmar disponibilidad</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="toast" id="toast"><div class="toast-dot green" id="toast-dot"></div><span id="toast-msg"></span></div>
+  <!-- MODAL REVISAR PROYECTO -->
+  <div class="modal-overlay" id="modal-revisar">
+    <div class="modal modal-lg">
+      <div class="modal-head">
+        <h3 id="rev-title">Revisar proyecto</h3>
+        <button class="modal-close" onclick="cerrarRevisar()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body modal-scroll" id="rev-body">
+        <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+      </div>
+      <div class="modal-foot" id="rev-foot">
+        <button class="btn btn-ghost" onclick="cerrarRevisar()">Cancelar</button>
+      </div>
+    </div>
+  </div>
 
-<script src="../panel-profesor.js"></script>
+  <!-- MODAL EVALUAR CON RÚBRICA -->
+  <div class="modal-overlay" id="modal-evaluar">
+    <div class="modal modal-lg">
+      <div class="modal-head">
+        <h3 id="eval-title">Evaluar proyecto</h3>
+        <button class="modal-close" onclick="cerrarEvaluar()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body modal-scroll" id="eval-body">
+        <div style="color:var(--text-muted);font-size:13px">Cargando rúbrica...</div>
+      </div>
+      <div class="modal-foot" id="eval-foot">
+        <button class="btn btn-ghost" onclick="cerrarEvaluar()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CREAR DOCUMENTO DE TEXTO -->
+  <div class="modal-overlay" id="modal-doc-texto">
+    <div class="modal modal-md">
+      <div class="modal-head">
+        <h3>Crear documento de texto</h3>
+        <button class="modal-close" onclick="cerrarCrearDocumento()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Título *</label>
+          <input type="text" id="doc-txt-titulo" class="form-control" maxlength="200" placeholder="Ej. Retroalimentación inicial">
+        </div>
+        <div class="form-group">
+          <label>Contenido *</label>
+          <textarea id="doc-txt-contenido" class="form-control" rows="8" style="resize:vertical" placeholder="Escribe el contenido del documento..."></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="cerrarCrearDocumento()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-guardar-doc-txt" onclick="guardarDocumentoTexto()">Guardar documento</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast">
+    <div class="toast-dot green" id="toast-dot"></div>
+    <span id="toast-msg"></span>
+  </div>
+
+  <script src="../panel-profesor.js"></script>
 </body>
 </html>
