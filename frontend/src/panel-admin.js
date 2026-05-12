@@ -9,7 +9,7 @@ const pageTitles = {
   rubricas: ['Rúbricas', 'Criterios de evaluación por evento'],
   proyectos: ['Aprobar Proyectos', 'Revisa proyectos, citas, profesor, horario y sala'],
   citas: ['Citas y QR', 'Aprueba o rechaza citas para liberar el QR de evaluación'],
-  evaluadores: ['Asignar Evaluadores', 'Designa profesores por proyecto'],
+  evaluadores: ['Asignar Evaluadores', 'Designa profesores por aula de evento'],
   'gestion-proyectos': ['Gestión de Proyectos', 'Crea, edita y asigna proyectos a alumnos'],
   analiticas: ['Analíticas', 'Ranking, comparativa e indicadores por evento'],
 };
@@ -256,6 +256,7 @@ function loadSection(id) {
   if (id === 'horarios') {
     loadEventosSelect();
     loadAulas();
+    loadEventosSelectModeradores();
   }
   if (id === 'rubricas') loadRubricas();
   if (id === 'proyectos') {
@@ -273,7 +274,7 @@ function switchTab(el, tabId) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
   if (el) el.classList.add('active');
 
-  ['tab-horarios', 'tab-aulas'].forEach((id) => {
+  ['tab-horarios', 'tab-aulas', 'tab-moderadores'].forEach((id) => {
     const tab = $(id);
     if (tab) tab.style.display = id === tabId ? 'block' : 'none';
   });
@@ -306,6 +307,22 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('[data-section]').forEach((btn) => {
     btn.addEventListener('click', () => showSection(btn.dataset.section, btn));
   });
+
+  const newUserBtn = $('btn-new-usuario');
+  if (newUserBtn) {
+    newUserBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openNewUsuario();
+    });
+  }
+
+  const saveUserBtn = $('btn-save-usuario');
+  if (saveUserBtn) {
+    saveUserBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      saveUsuario();
+    });
+  }
 
   loadGestionProyectos();
   loadDashboard();
@@ -453,6 +470,18 @@ function filterUsuarios(q) {
   renderUsuarios(f);
 }
 
+function openNewUsuario() {
+  if ($('modal-usuario-title')) $('modal-usuario-title').textContent = 'Nuevo usuario';
+  if ($('usuario-id')) $('usuario-id').value = '';
+  if ($('u-nombre')) $('u-nombre').value = '';
+  if ($('u-email')) $('u-email').value = '';
+  if ($('u-rol')) $('u-rol').value = 'Alumno';
+  if ($('u-password')) $('u-password').value = '';
+  if ($('u-pass-hint')) $('u-pass-hint').style.display = 'none';
+
+  openModal('modal-usuario');
+}
+
 function editUsuario(u) {
   if ($('modal-usuario-title')) $('modal-usuario-title').textContent = 'Editar usuario';
   if ($('usuario-id')) $('usuario-id').value = u.UsuarioID;
@@ -467,12 +496,17 @@ function editUsuario(u) {
 
 async function saveUsuario() {
   const id = $('usuario-id')?.value;
+  const btn = $('btn-save-usuario');
+  const password = $('u-password')?.value || '';
+
+  if (btn?.dataset.saving === '1') return;
 
   const body = {
     Nombre: $('u-nombre')?.value?.trim(),
     Email: $('u-email')?.value?.trim(),
     Rol: $('u-rol')?.value,
-    Contraseña: $('u-password')?.value || undefined,
+    Contraseña: password || undefined,
+    Contrasena: password || undefined,
   };
 
   if (!body.Nombre || !body.Email) {
@@ -480,7 +514,18 @@ async function saveUsuario() {
     return;
   }
 
+  if (!id && !password) {
+    toast('La contraseña es obligatoria para usuarios nuevos', 'red');
+    return;
+  }
+
   try {
+    if (btn) {
+      btn.dataset.saving = '1';
+      btn.disabled = true;
+      btn.textContent = id ? 'Actualizando...' : 'Creando...';
+    }
+
     const method = id ? 'PUT' : 'POST';
     const url = id ? `/usuarios/${id}` : '/usuarios';
 
@@ -495,8 +540,9 @@ async function saveUsuario() {
     toast(e.message || 'Error al guardar', 'red');
   } finally {
     if (btn) {
+      delete btn.dataset.saving;
       btn.disabled = false;
-      btn.textContent = 'Guardar proyecto';
+      btn.textContent = 'Guardar';
     }
   }
 }
@@ -1568,6 +1614,279 @@ async function saveEvaluadores() {
 // GESTIÓN DE PROYECTOS
 // ─────────────────────────────────────────────
 
+let profesoresEvalCatalogo = [];
+
+async function loadEventosSelectModeradores() {
+  try {
+    const data = await apiGet('/eventos');
+    const select = $('select-evento-moderadores');
+    if (!select) return;
+
+    const current = select.value;
+    select.innerHTML =
+      '<option value="">Todos los eventos</option>' +
+      (Array.isArray(data)
+        ? data.map((e) => `<option value="${e.EventoID}">${escapeHtml(e.Nombre)}</option>`).join('')
+        : '');
+
+    if (current) select.value = current;
+  } catch (e) {}
+}
+
+async function loadAulasEval() {
+  const eid = $('select-evento-eval')?.value;
+  const tbody = $('evaluadores-tbody');
+
+  if (!tbody) return;
+
+  if (!eid) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">
+          Selecciona un evento
+        </td>
+      </tr>`;
+    return;
+  }
+
+  try {
+    const data = await apiGet(`/eventos/${eid}/aulas-resumen`);
+
+    if (!Array.isArray(data) || !data.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">
+            Este evento aun no tiene aulas con horarios
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map((aula) => `
+      <tr>
+        <td>
+          <div class="td-name">${escapeHtml(aula.NombreAula || 'Aula')}</div>
+          <div class="td-subtle">${escapeHtml(aula.Capacidad ? `${aula.Capacidad} lugares` : 'Capacidad sin definir')}</div>
+        </td>
+        <td>
+          <span class="badge ${Number(aula.SlotsDisponibles) > 0 ? 'badge-green' : 'badge-gray'}">
+            ${Number(aula.SlotsDisponibles || 0)}/${Number(aula.TotalSlots || 0)} disponibles
+          </span>
+        </td>
+        <td>
+          ${aula.Evaluadores
+            ? String(aula.Evaluadores).split(',').map((e) => `<span class="badge badge-blue" style="margin-right:4px">${escapeHtml(e.trim())}</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:12px">Sin evaluadores</span>'}
+        </td>
+        <td>
+          ${aula.Moderador
+            ? `<span class="badge badge-green">${escapeHtml(aula.Moderador)}</span>`
+            : `<span class="badge badge-orange">${Number(aula.PostulacionesPendientes || 0)} pendientes</span>`}
+        </td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="openAsignarEval(${eid},${aula.AulaID},'${escapeHtml(aula.NombreAula || '')}')">
+            Asignar
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);padding:16px">${escapeHtml(e.message || 'Error')}</td></tr>`;
+  }
+}
+
+Object.assign(window, {
+  openNewUsuario,
+  editUsuario,
+  saveUsuario,
+  deleteUsuario,
+});
+
+async function openAsignarEval(eventoId, aulaId, nombreAula) {
+  if ($('eval-evento-id')) $('eval-evento-id').value = eventoId;
+  if ($('eval-aula-id')) $('eval-aula-id').value = aulaId;
+  if ($('modal-eval-title')) $('modal-eval-title').textContent = `Evaluadores de aula - ${nombreAula || 'Aula'}`;
+
+  selectedProfesores = [];
+  profesoresEvalCatalogo = [];
+  updateEvalWarning([]);
+
+  const list = $('profesores-eval-list');
+  if (list) list.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando profesores...</div>';
+
+  openModal('modal-evaluadores');
+
+  try {
+    const [candidatos, actuales] = await Promise.all([
+      apiGet('/profesores/evaluadores-candidatos'),
+      apiGet(`/eventos/${eventoId}/aulas/${aulaId}/evaluadores`),
+    ]);
+
+    const asignados = actuales?.evaluadores || [];
+    selectedProfesores = asignados.map((p) => Number(p.ProfesorID));
+    profesoresEvalCatalogo = Array.isArray(candidatos) ? candidatos : [];
+
+    if (!list) return;
+
+    if (!profesoresEvalCatalogo.length) {
+      list.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Sin profesores registrados</div>';
+      return;
+    }
+
+    list.innerHTML = profesoresEvalCatalogo.map((p) => {
+      const checked = selectedProfesores.includes(Number(p.UsuarioID)) ? 'checked' : '';
+      return `
+        <label class="prof-check-card">
+          <input type="checkbox" value="${p.UsuarioID}" ${checked} onchange="toggleProfesorEval(this,${p.UsuarioID})">
+          <div>
+            <div class="prof-check-name">${escapeHtml(p.Nombre)}</div>
+            <div class="prof-check-meta">${escapeHtml(p.Email)}</div>
+            <div class="prof-check-meta">${escapeHtml(p.Especialidades || 'Sin especialidad registrada')}</div>
+            <div class="prof-check-meta">${escapeHtml(p.Departamentos || 'Departamento sin registrar')}</div>
+          </div>
+        </label>`;
+    }).join('');
+
+    updateEvalWarning(actuales?.especialidadesRepetidas || []);
+  } catch (e) {
+    if (list) list.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHtml(e.message || 'Error')}</div>`;
+  }
+}
+
+function getEspecialidadesSeleccionadasRepetidas() {
+  const conteo = new Map();
+
+  selectedProfesores.forEach((id) => {
+    const profe = profesoresEvalCatalogo.find((p) => Number(p.UsuarioID) === Number(id));
+    String(profe?.Especialidades || '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .forEach((nombre) => conteo.set(nombre, (conteo.get(nombre) || 0) + 1));
+  });
+
+  return Array.from(conteo.entries())
+    .filter(([, total]) => total > 1)
+    .map(([nombre]) => nombre);
+}
+
+function updateEvalWarning(repetidas = null) {
+  const warning = $('eval-warning');
+  if (!warning) return;
+
+  const duplicadas = Array.isArray(repetidas) ? repetidas : getEspecialidadesSeleccionadasRepetidas();
+
+  if (!duplicadas.length) {
+    warning.style.display = 'none';
+    warning.textContent = '';
+    return;
+  }
+
+  warning.style.display = 'block';
+  warning.textContent = `Advertencia: especialidad repetida (${duplicadas.join(', ')}). Considera variar los perfiles.`;
+}
+
+function toggleProfesorEval(el, id) {
+  if (el.checked) {
+    if (selectedProfesores.length >= 3) {
+      el.checked = false;
+      toast('Maximo 3 evaluadores por aula', 'red');
+      return;
+    }
+
+    selectedProfesores.push(id);
+  } else {
+    selectedProfesores = selectedProfesores.filter((x) => Number(x) !== Number(id));
+  }
+
+  updateEvalWarning();
+}
+
+async function saveEvaluadores() {
+  const eventoId = $('eval-evento-id')?.value;
+  const aulaId = $('eval-aula-id')?.value;
+
+  if (!eventoId || !aulaId) {
+    toast('Selecciona un aula valida', 'red');
+    return;
+  }
+
+  if (!selectedProfesores.length) {
+    toast('Selecciona al menos un profesor', 'red');
+    return;
+  }
+
+  try {
+    const data = await apiSend(`/eventos/${eventoId}/aulas/${aulaId}/evaluadores`, 'PUT', {
+      profesores: selectedProfesores,
+    });
+
+    updateEvalWarning(data.especialidadesRepetidas || []);
+    closeModal('modal-evaluadores');
+    toast(data.especialidadesRepetidas?.length ? 'Evaluadores guardados con advertencia' : 'Evaluadores asignados');
+    loadAulasEval();
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
+}
+
+async function loadModeradoresAdmin() {
+  const tbody = $('moderadores-tbody');
+  if (!tbody) return;
+
+  const eventoId = $('select-evento-moderadores')?.value;
+  const query = eventoId ? `?eventoId=${encodeURIComponent(eventoId)}` : '';
+
+  try {
+    const data = await apiGet(`/moderadores-aula${query}`);
+
+    if (!Array.isArray(data) || !data.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="empty-cell">No hay postulaciones de moderador.</td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map((m) => {
+      const pendiente = m.Estado === 'pendiente';
+      return `
+        <tr>
+          <td>
+            <div class="td-name">${escapeHtml(m.NombreEvento || 'Evento')}</div>
+            <div class="td-subtle">${formatDate(m.FechaEvento)}</div>
+          </td>
+          <td>${escapeHtml(m.NombreAula || '-')}</td>
+          <td>
+            <div class="td-name">${escapeHtml(m.NombreAlumno || 'Alumno')}</div>
+            <div class="td-subtle">${escapeHtml(m.EmailAlumno || '')}</div>
+          </td>
+          <td>${escapeHtml(m.Semestre || 'No registrado')}</td>
+          <td>${badgeEstado(m.Estado)}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn btn-primary btn-sm" ${pendiente ? '' : 'disabled'} onclick="updateModeradorAdmin(${m.ModeradorID},'aceptado')">Aceptar</button>
+              <button class="btn btn-danger btn-sm" ${pendiente ? '' : 'disabled'} onclick="updateModeradorAdmin(${m.ModeradorID},'rechazado')">Rechazar</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:16px">${escapeHtml(e.message || 'Error')}</td></tr>`;
+  }
+}
+
+async function updateModeradorAdmin(id, estado) {
+  try {
+    await apiSend(`/moderadores-aula/${id}/estado`, 'PUT', { Estado: estado });
+    toast(estado === 'aceptado' ? 'Moderador aceptado' : 'Postulacion rechazada');
+    loadModeradoresAdmin();
+    loadAulasEval();
+  } catch (e) {
+    toast(e.message || 'Error', 'red');
+  }
+}
+
 let allProyectos = [];
 
 async function loadGestionProyectos() {
@@ -1684,11 +2003,13 @@ function renderGPList(list) {
 
         <td>${badgeEstado(p.Estatus || p.EstadoAprobacion || p.EstadoCita)}</td>
 
-        <td style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" onclick="verDetallesProyecto(${p.ProyectoID})">Ver</button>
-          <button class="btn btn-ghost btn-sm" onclick="editProyecto(${safeJsonForOnclick(p)})">Editar</button>
-          <button class="btn btn-ghost btn-sm" onclick="abrirEtapasProyecto(${p.ProyectoID},'${escapeHtml(p.Titulo || '')}')">Etapas</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteProyecto(${p.ProyectoID},'${escapeHtml(p.Titulo || '')}')">Eliminar</button>
+        <td class="table-actions-cell">
+          <div class="row-actions">
+            <button class="btn btn-primary btn-sm" onclick="verDetallesProyecto(${p.ProyectoID})">Ver</button>
+            <button class="btn btn-ghost btn-sm" onclick="editProyecto(${safeJsonForOnclick(p)})">Editar</button>
+            <button class="btn btn-ghost btn-sm" onclick="abrirEtapasProyecto(${p.ProyectoID},'${escapeHtml(p.Titulo || '')}')">Etapas</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteProyecto(${p.ProyectoID},'${escapeHtml(p.Titulo || '')}')">Eliminar</button>
+          </div>
         </td>
       </tr>`;
   }).join('');
@@ -2125,7 +2446,40 @@ async function loadAnaliticas() {
   await Promise.all([
     loadComparativaEventos(),
     loadEventosSelectRanking(),
+    loadPodiosAdmin(),
   ]);
+}
+
+async function loadPodiosAdmin() {
+  const cont = $('admin-podios-content');
+  if (!cont) return;
+
+  cont.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando podios...</div>';
+
+  try {
+    const data = await apiGet('/eventos/pasados/podio');
+
+    if (!Array.isArray(data) || !data.length) {
+      cont.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Aun no hay eventos finalizados con podio.</div>';
+      return;
+    }
+
+    cont.innerHTML = data.map((item) => `
+      <div class="podio-row">
+        <div class="podio-pos">${item.Posicion}</div>
+        <div class="podio-main">
+          <div class="podio-title">${escapeHtml(item.Titulo || 'Proyecto')}</div>
+          <div class="podio-meta">${escapeHtml(item.NombreEvento || 'Evento')} - ${formatDate(item.FechaEvento)}</div>
+          <div class="podio-meta">Integrantes: ${escapeHtml(item.Integrantes || item.NombreAlumno || '-')}</div>
+          <div class="podio-meta">Profesor de apoyo: ${escapeHtml(item.NombreProfesorApoyo || 'Sin asignar')}</div>
+        </div>
+        <div class="podio-score">${Number(item.PromedioFinal || 0).toFixed(2)}</div>
+        ${item.EntregaID ? `<a class="btn btn-ghost btn-sm" href="${API}/entregas/${item.EntregaID}/ver" target="_blank">Leer PDF</a>` : ''}
+      </div>
+    `).join('');
+  } catch (e) {
+    cont.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHtml(e.message || 'Error al cargar podios')}</div>`;
+  }
 }
 
 async function loadComparativaEventos() {
@@ -2260,3 +2614,59 @@ function logout() {
   localStorage.removeItem('usuario');
   window.location.href = 'login.html';
 }
+
+Object.assign(window, {
+  abrirEtapasProyecto,
+  abrirModalEvento,
+  addCriterio,
+  agregarEtapa,
+  aprobarCita,
+  cambiarEstadoEvento,
+  cambiarEstadoProyecto,
+  cerrarSubirDocAdmin,
+  closeModal,
+  copiarQR,
+  deleteAula,
+  deleteEvento,
+  deleteHorario,
+  deleteProyecto,
+  deleteRubrica,
+  deleteUsuario,
+  editEvento,
+  editProyecto,
+  editUsuario,
+  filterGP,
+  filterUsuarios,
+  loadAulasEval,
+  loadCitasAdmin,
+  loadHorarios,
+  loadModeradoresAdmin,
+  loadProyectosEvento,
+  loadRankingEvento,
+  openAsignarEval,
+  openModal,
+  openModalNuevoProyecto,
+  openModalRubrica,
+  openNewUsuario,
+  rechazarCita,
+  rechazarInscripcion,
+  removeCriterio,
+  renderGP,
+  safeJsonForOnclick,
+  saveAula,
+  saveEvaluadores,
+  saveEvento,
+  saveHorario,
+  saveProyecto,
+  saveRubrica,
+  saveUsuario,
+  showSection,
+  subirDocumentoAdmin,
+  switchTab,
+  toggleHorario,
+  toggleProfesorEval,
+  updateCriterioField,
+  updateModeradorAdmin,
+  updateNivelField,
+  verDetallesProyecto,
+});

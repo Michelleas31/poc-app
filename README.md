@@ -34,41 +34,38 @@ git clone <url-del-repo>
 cd poc-app-michelle
 ```
 
-### 2. Levantar la base de datos con Docker
+### 2. Levantar la app con Docker
 
 ```bash
 docker compose up -d
 ```
 
-Espera ~10 segundos a que MariaDB pase el health check.
+Esto levanta frontend, backend y MariaDB. En el primer arranque del volumen
+`mariadb_data_dev`, MariaDB carga automaticamente los scripts de `db/`.
 
-### 3. Aplicar el esquema inicial
-
-```bash
-docker exec -i poc-mariadb mysql -u root -p sistematesis < db/database.sql
-```
-
-### 4. Aplicar la migración de documentos (v1.1.0)
+### 3. Verificar que el backend conecto
 
 ```bash
-docker exec -i poc-mariadb mysql -u root -p sistematesis < db/migracion_documentos_revision.sql
+docker compose logs backend
 ```
 
-### 5. Instalar dependencias del backend
+Debe aparecer `Conectado a MariaDB correctamente`.
+
+### 4. Instalar dependencias del backend
 
 ```bash
 cd backend
 npm install
 ```
 
-### 6. Iniciar el backend
+### 5. Iniciar el backend
 
 ```bash
 npm start
 # El servidor queda en http://localhost:3000
 ```
 
-### 7. Servir el frontend
+### 6. Servir el frontend
 
 Usa cualquier servidor estático apuntando a `frontend/src/`. Ejemplo con live-server:
 
@@ -86,11 +83,11 @@ Crea `backend/.env` (o ajusta `docker-compose.yml`). Todos los valores tienen fa
 |----------|---------|-------------|
 | `DB_HOST` | `poc-mariadb` | Host de MariaDB (nombre del servicio Docker) |
 | `DB_PORT` | `3306` | Puerto de MariaDB |
-| `DB_USER` | `root` | Usuario de la base de datos |
-| `DB_PASSWORD` | *(vacío)* | Contraseña |
+| `DB_USER` | `poc_user` | Usuario de la base de datos en Docker Compose |
+| `DB_PASSWORD` | `poc_password` | Contraseña de desarrollo en Docker Compose |
 | `DB_NAME` | `sistematesis` | Nombre de la base de datos |
 
-Para desarrollo local sin Docker usa `DB_HOST=localhost DB_PORT=3307` (si expones ese puerto en compose).
+Para desarrollo local del backend contra MariaDB en Docker usa `DB_HOST=localhost DB_PORT=3307 DB_USER=poc_user DB_PASSWORD=poc_password`.
 
 ---
 
@@ -340,8 +337,8 @@ python -m http.server 8080 --directory frontend/src
 ```env
 DB_HOST=localhost
 DB_PORT=3307
-DB_USER=root
-DB_PASSWORD=
+DB_USER=poc_user
+DB_PASSWORD=poc_password
 DB_NAME=sistematesis
 ```
 

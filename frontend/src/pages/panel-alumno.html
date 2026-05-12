@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="../styles/panel-profesor.css">
-  <link rel="stylesheet" href="../styles/panel-alumno.css">
+  <link rel="stylesheet" href="../styles/panel-alumno.css?v=20260507-panel-fix">
 
   <!-- QR render sin npm -->
   <script src="https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -81,6 +81,14 @@
         </svg>
         Mis inscripciones
         <span class="nav-badge" id="badge-inscripciones" style="display:none"></span>
+      </button>
+
+      <button class="nav-item" onclick="showSection('moderador', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+          <path d="M8 10h8M8 14h5M17 14l2 2 3-4"></path>
+        </svg>
+        Ser moderador
       </button>
 
       <span class="nav-section-label">Análisis</span>
@@ -317,6 +325,15 @@
       </section>
 
       <!-- MI DESEMPEÑO -->
+      <section class="section" id="section-moderador">
+        <div class="section-card">
+          <div class="section-card-title">Postularme como moderador</div>
+          <div id="moderador-content">
+            <div style="color:var(--text-muted);font-size:13px">Cargando eventos...</div>
+          </div>
+        </div>
+      </section>
+
       <section class="section" id="section-mi-desempeno">
         <div class="section-card">
           <div class="section-card-title">Resultados de evaluación con rúbrica</div>
@@ -351,6 +368,13 @@
 
           <div id="desemp-ranking">
             <div style="color:var(--text-muted);font-size:13px">Selecciona un evento.</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-card-title">Eventos pasados</div>
+          <div id="desemp-podios">
+            <div style="color:var(--text-muted);font-size:13px">Cargando podios...</div>
           </div>
         </div>
       </section>
@@ -550,6 +574,6 @@
     <span id="toast-msg"></span>
   </div>
 
-  <script src="../panel-alumno.js"></script>
+  <script src="../panel-alumno.js?v=20260507-panel-fix"></script>
 </body>
 </html>

@@ -51,6 +51,7 @@ function showSection(id, el) {
   const titulos = {
     'mis-proyectos': ['Mis proyectos', 'Proyectos asignados a ti'],
     'proyectos-disponibles': ['Proyectos disponibles', 'Ofrece tu disponibilidad para evaluar'],
+    'evaluaciones-evento': ['Mis evaluaciones de evento', 'Proyectos asignados por aula'],
     'mis-citas': ['Mis citas', 'Citas de evaluación confirmadas'],
     'escanear': ['Escanear QR / Evaluar', 'Escanea el QR del alumno y evalúa'],
     'historial': ['Historial de evaluaciones', 'Desempeño histórico de tus proyectos'],
@@ -68,6 +69,7 @@ function showSection(id, el) {
   if (id === 'mis-proyectos') loadMisProyectos();
   if (id === 'proyectos-disponibles') loadProyectosDisponibles();
   if (id === 'mis-citas') loadMisCitas();
+  if (id === 'evaluaciones-evento') loadEvaluacionesEventoProfesor();
   if (id === 'historial') iniciarHistorial();
   if (id === 'indicadores') iniciarIndicadores();
   if (id !== 'escanear') detenerCamara();
@@ -1091,6 +1093,103 @@ async function submitEvaluacionQR() {
 // HISTORIAL
 // ══════════════════════════════════════════
 
+async function loadEvaluacionesEventoProfesor() {
+  const container = document.getElementById('evaluaciones-evento-content');
+  if (!container) return;
+
+  container.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando evaluaciones asignadas...</div>';
+
+  try {
+    const response = await fetch(`${API}/profesores/${user.id}/evaluaciones-evento`);
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message || 'Error al cargar evaluaciones');
+
+    if (!Array.isArray(data) || !data.length) {
+      container.innerHTML = '<div style="color:var(--text-muted);font-size:13px">No tienes aulas asignadas con proyectos aceptados.</div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Evento</th>
+              <th>Aula / horario</th>
+              <th>Proyecto</th>
+              <th>Alumno</th>
+              <th>Estado</th>
+              <th>Accion</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map((row) => `
+              <tr>
+                <td>
+                  <div class="td-name">${escapeHTML(row.NombreEvento || 'Evento')}</div>
+                  <div class="td-subtle">${safeDate(row.FechaEvento)}</div>
+                </td>
+                <td>${escapeHTML(row.NombreAula || '-')} · ${safeTime(row.HoraInicio)}-${safeTime(row.HoraFin)}</td>
+                <td>
+                  <div class="td-name">${escapeHTML(row.TituloProyecto || 'Proyecto')}</div>
+                  <div class="td-subtle">Apoyo: ${escapeHTML(row.NombreProfesorApoyo || 'Sin asignar')}</div>
+                </td>
+                <td>${escapeHTML(row.NombreAlumno || '-')}</td>
+                <td>${row.EvalEventoID ? '<span class="badge badge-green">Calificado</span>' : '<span class="badge badge-orange">Pendiente</span>'}</td>
+                <td>
+                  <button class="btn btn-primary btn-sm" onclick="evaluarProyecto(${row.ProyectoID})">
+                    ${row.EvalEventoID ? 'Editar calificacion' : 'Calificar'}
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHTML(error.message || 'Error')}</div>`;
+  }
+}
+
+async function loadPodiosProfesor() {
+  const container = document.getElementById('prof-podios-content');
+  if (!container) return;
+
+  container.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Cargando podios...</div>';
+
+  try {
+    const response = await fetch(`${API}/eventos/pasados/podio`);
+    const podios = await response.json();
+
+    if (!response.ok) throw new Error(podios.message || 'Error al cargar podios');
+
+    if (!Array.isArray(podios) || !podios.length) {
+      container.innerHTML = '<div style="color:var(--text-muted);font-size:13px">Aun no hay eventos finalizados con podio.</div>';
+      return;
+    }
+
+    container.innerHTML = podios.map((item) => `
+      <div class="podio-row">
+        <div class="podio-pos">${item.Posicion}</div>
+        <div class="podio-main">
+          <div class="podio-title">${escapeHTML(item.Titulo || 'Proyecto')}</div>
+          <div class="podio-meta">${escapeHTML(item.NombreEvento || 'Evento')} - ${safeDate(item.FechaEvento)}</div>
+          <div class="podio-meta">Integrantes: ${escapeHTML(item.Integrantes || item.NombreAlumno || '-')}</div>
+          <div class="podio-meta">Profesor de apoyo: ${escapeHTML(item.NombreProfesorApoyo || 'Sin asignar')}</div>
+        </div>
+        <div class="podio-score">${Number(item.PromedioFinal || 0).toFixed(2)}</div>
+        ${item.EntregaID ? `<a class="btn btn-ghost btn-sm" href="${API}/entregas/${item.EntregaID}/ver" target="_blank">Leer PDF</a>` : ''}
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHTML(error.message || 'Error')}</div>`;
+  }
+}
+
 async function iniciarHistorial() {
   const sel = document.getElementById('hist-select-proyecto');
   const cont = document.getElementById('hist-content');
@@ -1100,6 +1199,8 @@ async function iniciarHistorial() {
   if (cont) {
     cont.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:16px">Selecciona un proyecto para ver su historial de evaluaciones.</div>';
   }
+
+  loadPodiosProfesor();
 
   if (!misProyectosData.length) {
     const data = await fetch(`${API}/proyectos/por-profesor/${user.id}`).then(r => r.json()).catch(() => []);

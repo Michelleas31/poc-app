@@ -220,7 +220,7 @@
               <input class="search-input" placeholder="Buscar usuario..." oninput="filterUsuarios(this.value)">
             </div>
 
-            <button class="btn btn-primary btn-sm" onclick="openModal('modal-usuario')">+ Nuevo usuario</button>
+            <button class="btn btn-primary btn-sm" id="btn-new-usuario" type="button">+ Nuevo usuario</button>
           </div>
         </div>
 
@@ -259,6 +259,7 @@
       <div class="tabs">
         <button class="tab active" onclick="switchTab(this, 'tab-horarios')">Horarios</button>
         <button class="tab" onclick="switchTab(this, 'tab-aulas')">Aulas</button>
+        <button class="tab" onclick="switchTab(this, 'tab-moderadores'); loadModeradoresAdmin()">Moderadores</button>
       </div>
 
       <div id="tab-horarios">
@@ -310,6 +311,37 @@
             <tbody id="aulas-tbody">
               <tr>
                 <td colspan="3" class="empty-cell">Cargando...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-moderadores" style="display: none">
+        <div class="toolbar-row toolbar-left">
+          <div class="inline-field">
+            <label>Evento:</label>
+            <select class="form-control" id="select-evento-moderadores" onchange="loadModeradoresAdmin()">
+              <option value="">Todos los eventos</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Evento</th>
+                <th>Aula</th>
+                <th>Alumno</th>
+                <th>Semestre</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="moderadores-tbody">
+              <tr>
+                <td colspan="6" class="empty-cell">Selecciona un evento o espera la carga...</td>
               </tr>
             </tbody>
           </table>
@@ -367,8 +399,8 @@
             <tr>
               <th>Proyecto</th>
               <th>Alumno</th>
-              <th>Profesor</th>
-              <th>Cita</th>
+              <th>Profesor apoyo</th>
+              <th>Horario</th>
               <th>Estado</th>
               <th>QR</th>
               <th>Acciones</th>
@@ -450,13 +482,22 @@
           </div>
         </div>
 
-        <table>
+        <table class="gp-table">
+          <colgroup>
+            <col class="gp-col-title">
+            <col class="gp-col-person">
+            <col class="gp-col-person">
+            <col class="gp-col-date">
+            <col class="gp-col-progress">
+            <col class="gp-col-status">
+            <col class="gp-col-actions">
+          </colgroup>
           <thead>
             <tr>
               <th>Título</th>
               <th>Alumno</th>
-              <th>Profesor</th>
-              <th>Cita</th>
+              <th>Profesor apoyo</th>
+              <th>Horario</th>
               <th>Progreso</th>
               <th>Estado</th>
               <th>Acciones</th>
@@ -464,7 +505,7 @@
           </thead>
           <tbody id="gp-tbody">
             <tr>
-              <td colspan="6" class="empty-cell">Cargando...</td>
+              <td colspan="7" class="empty-cell">Cargando...</td>
             </tr>
           </tbody>
         </table>
@@ -478,7 +519,7 @@
       <div class="toolbar-row toolbar-left">
         <div class="inline-field">
           <label>Evento:</label>
-          <select class="form-control" id="select-evento-eval" onchange="loadProyectosEval()">
+          <select class="form-control" id="select-evento-eval" onchange="loadAulasEval()">
             <option value="">Seleccionar evento...</option>
           </select>
         </div>
@@ -488,15 +529,16 @@
         <table>
           <thead>
             <tr>
-              <th>Proyecto</th>
-              <th>Aula / Horario</th>
+              <th>Aula</th>
+              <th>Slots</th>
               <th>Evaluadores asignados</th>
+              <th>Moderador</th>
               <th>Acción</th>
             </tr>
           </thead>
           <tbody id="evaluadores-tbody">
             <tr>
-              <td colspan="4" class="empty-cell">Selecciona un evento</td>
+              <td colspan="5" class="empty-cell">Selecciona un evento</td>
             </tr>
           </tbody>
         </table>
@@ -531,6 +573,14 @@
 
         <div id="ranking-content">
           <div class="empty-text padded">Selecciona un evento para ver el ranking.</div>
+        </div>
+      </div>
+
+      <div class="analytics-card">
+        <div class="analytics-title">Eventos pasados</div>
+        <div class="analytics-subtitle">Podios historicos generados al finalizar eventos</div>
+        <div id="admin-podios-content">
+          <div class="empty-text">Cargando podios...</div>
         </div>
       </div>
     </div>
@@ -586,7 +636,7 @@
 
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-usuario')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveUsuario()">Guardar</button>
+      <button class="btn btn-primary" id="btn-save-usuario" type="button">Guardar</button>
     </div>
   </div>
 </div>
@@ -796,9 +846,11 @@
     </div>
 
     <div class="modal-body">
-      <input type="hidden" id="eval-ep-id">
+      <input type="hidden" id="eval-evento-id">
+      <input type="hidden" id="eval-aula-id">
 
-      <p class="muted-p">Selecciona hasta 3 profesores evaluadores.</p>
+      <p class="muted-p">Selecciona hasta 3 profesores evaluadores para esta aula. El profesor de apoyo del proyecto se gestiona aparte.</p>
+      <div id="eval-warning" class="alert-inline" style="display:none"></div>
 
       <div id="profesores-eval-list" class="scroll-list"></div>
     </div>
@@ -862,10 +914,11 @@
         </div>
 
         <div class="form-group">
-          <label>Profesor</label>
+          <label>Profesor de apoyo</label>
           <select class="form-control" id="proy-profesor">
             <option value="">Sin asignar</option>
           </select>
+          <div class="field-hint">Este profesor acompana el proyecto; los evaluadores del evento se asignan por aula.</div>
         </div>
       </div>
     </div>
@@ -996,6 +1049,6 @@
   <span id="toast-msg"></span>
 </div>
 
-<script src="../panel-admin.js"></script>
+<script src="../panel-admin.js?v=20260507-admin-buttons"></script>
 </body>
 </html>

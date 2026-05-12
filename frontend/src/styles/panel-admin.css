@@ -1421,3 +1421,171 @@ td:last-child {
     flex: 1 1 132px;
   }
 }
+
+/* Final admin table repair override */
+.main,
+.content,
+.section {
+  min-width: 0;
+}
+
+.main {
+  width: calc(100% - var(--sidebar-w));
+  overflow-x: hidden;
+}
+
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, .42) transparent;
+}
+
+.table-wrap::-webkit-scrollbar,
+.sidebar-nav::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb,
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, .34);
+  border-radius: 999px;
+}
+
+.table-wrap::-webkit-scrollbar-track,
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+th,
+td {
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+th {
+  white-space: nowrap;
+}
+
+#gp-tbody td:last-child,
+#proyectos-tbody td:last-child,
+#citas-tbody td:last-child,
+#evaluadores-tbody td:last-child,
+#rubricas-tbody td:last-child {
+  display: table-cell;
+}
+
+#section-gestion-proyectos .table-wrap {
+  margin: 0;
+}
+
+.gp-table {
+  width: 100%;
+  min-width: 1280px;
+  table-layout: fixed;
+}
+
+.gp-table .gp-col-title {
+  width: 280px;
+}
+
+.gp-table .gp-col-person {
+  width: 140px;
+}
+
+.gp-table .gp-col-date {
+  width: 210px;
+}
+
+.gp-table .gp-col-progress {
+  width: 150px;
+}
+
+.gp-table .gp-col-status {
+  width: 220px;
+}
+
+.gp-table .gp-col-actions {
+  width: 240px;
+}
+
+.gp-table th,
+.gp-table td {
+  vertical-align: middle;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.gp-table .td-name {
+  min-width: 0;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.gp-table .td-name > div:first-child {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.gp-table .badge {
+  display: inline-flex;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+#gp-tbody td:last-child .row-actions .btn {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .main {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .gp-table {
+    min-width: 1040px;
+  }
+
+  .gp-table .gp-col-title {
+    width: 240px;
+  }
+
+  .gp-table .gp-col-person {
+    width: 128px;
+  }
+
+  .gp-table .gp-col-date {
+    width: 180px;
+  }
+
+  .gp-table .gp-col-progress {
+    width: 130px;
+  }
+
+  .gp-table .gp-col-status {
+    width: 180px;
+  }
+
+  .gp-table .gp-col-actions {
+    width: 182px;
+  }
+
+  #gp-tbody td:last-child .row-actions .btn {
+    flex: 1 1 82px;
+  }
+}

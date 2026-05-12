@@ -69,6 +69,14 @@
         Escanear QR / Evaluar
       </button>
 
+      <button class="nav-item" onclick="showSection('evaluaciones-evento', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+          <path d="M8 10h8M8 14h5M17 14l2 2 3-4"></path>
+        </svg>
+        Mis evaluaciones de evento
+      </button>
+
       <span class="nav-section-label">Análisis</span>
 
       <button class="nav-item" onclick="showSection('historial', this)">
@@ -281,6 +289,15 @@
       </section>
 
       <!-- ── HISTORIAL ───────────────────────────────────────── -->
+      <section class="section" id="section-evaluaciones-evento">
+        <div class="section-card">
+          <div class="section-card-title">Mis evaluaciones de evento</div>
+          <div id="evaluaciones-evento-content">
+            <div style="color:var(--text-muted);font-size:13px">Cargando...</div>
+          </div>
+        </div>
+      </section>
+
       <section class="section" id="section-historial">
         <div class="section-card">
           <div class="section-card-title">Historial de evaluaciones por proyecto</div>
@@ -292,6 +309,13 @@
           </div>
           <div id="hist-content">
             <div style="color:var(--text-muted);font-size:13px">Selecciona un proyecto para ver su historial.</div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div class="section-card-title">Eventos pasados</div>
+          <div id="prof-podios-content">
+            <div style="color:var(--text-muted);font-size:13px">Cargando podios...</div>
           </div>
         </div>
       </section>

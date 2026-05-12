@@ -20,15 +20,21 @@ async function profesorPuedeEvaluarProyecto(proyectoId, profesorId, proyectoProf
   const [[asignacion]] = await dbP.query(
     `SELECT ep.EventoProyectoID
      FROM eventoproyectos ep
+     LEFT JOIN horariosevento h ON h.HorarioID = ep.HorarioID
+     LEFT JOIN evaluadoresaula ea
+       ON ea.EventoID = ep.EventoID
+      AND ea.AulaID = h.AulaID
+      AND ea.ProfesorID = ?
      LEFT JOIN evaluadoresevento ee ON ee.EventoProyectoID = ep.EventoProyectoID
      WHERE ep.ProyectoID = ?
        AND ep.Estado = 'aceptado'
        AND (
         ep.ProfesorID = ?
         OR ee.ProfesorID = ?
+        OR ea.ProfesorID IS NOT NULL
        )
      LIMIT 1`,
-    [proyectoId, profesorId, profesorId]
+    [profesorId, proyectoId, profesorId, profesorId]
   );
 
   return Boolean(asignacion);
@@ -74,6 +80,64 @@ async function insertarEvaluacionCompatible({
   );
 
   return result.insertId;
+}
+
+async function insertarEvaluacionEventoCompatible({
+  ProyectoID,
+  ProfesorID,
+  RubricaID,
+  puntajeTotal,
+  comentarios = null,
+}) {
+  try {
+    const [[eventoProyecto]] = await dbP.query(
+      `SELECT ep.EventoID
+       FROM eventoproyectos ep
+       LEFT JOIN horariosevento h ON h.HorarioID = ep.HorarioID
+       LEFT JOIN evaluadoresaula ea
+         ON ea.EventoID = ep.EventoID
+        AND ea.AulaID = h.AulaID
+        AND ea.ProfesorID = ?
+       LEFT JOIN evaluadoresevento ee
+         ON ee.EventoProyectoID = ep.EventoProyectoID
+        AND ee.ProfesorID = ?
+       WHERE ep.ProyectoID = ?
+         AND ep.Estado = 'aceptado'
+         AND (
+           ea.ProfesorID IS NOT NULL
+           OR ee.ProfesorID IS NOT NULL
+         )
+       ORDER BY ep.EventoProyectoID DESC
+       LIMIT 1`,
+      [ProfesorID, ProfesorID, ProyectoID]
+    );
+
+    if (!eventoProyecto) return null;
+
+    const [result] = await dbP.query(
+      `INSERT INTO evaluacionesevento
+         (EventoID, ProyectoID, ProfesorID, RubricaID, PuntajeTotal, Comentario, Fecha)
+       VALUES (?, ?, ?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE
+         RubricaID = VALUES(RubricaID),
+         PuntajeTotal = VALUES(PuntajeTotal),
+         Comentario = VALUES(Comentario),
+         Fecha = NOW()`,
+      [
+        eventoProyecto.EventoID,
+        ProyectoID,
+        ProfesorID,
+        RubricaID,
+        puntajeTotal,
+        comentarios,
+      ]
+    );
+
+    return result.insertId || null;
+  } catch (err) {
+    if (err.code === 'ER_NO_SUCH_TABLE') return null;
+    throw err;
+  }
 }
 
 /*
@@ -320,6 +384,14 @@ router.post('/evaluaciones', async (req, res) => {
       comentarios: Comentarios || req.body.Observaciones || null,
     });
 
+    await insertarEvaluacionEventoCompatible({
+      ProyectoID,
+      ProfesorID,
+      RubricaID,
+      puntajeTotal,
+      comentarios: Comentarios || req.body.Observaciones || null,
+    });
+
     // Insertar detalles de evaluación
     for (const detalle of detallesValidados) {
       await dbP.query(
@@ -486,6 +558,14 @@ router.post('/proyectos/:id/evaluacion', async (req, res) => {
       AlumnoID: proyecto.AlumnoID || null,
       puntajeTotal,
       puntajeMax,
+      comentarios: Comentarios || Observaciones || null,
+    });
+
+    await insertarEvaluacionEventoCompatible({
+      ProyectoID,
+      ProfesorID,
+      RubricaID,
+      puntajeTotal,
       comentarios: Comentarios || Observaciones || null,
     });
 

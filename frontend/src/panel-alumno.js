@@ -78,6 +78,7 @@ function showSection(id, el) {
     'mi-qr': ['Generar QR', 'Codigo QR temporal para presentar'],
     inscribir: ['Inscribir a evento', 'Registra tu proyecto en una feria'],
     'mis-inscripciones': ['Mis inscripciones', 'Estado de tus solicitudes'],
+    moderador: ['Ser moderador', 'Postulate para apoyar la logistica de un aula'],
     'mi-desempeno': ['Mi desempeño', 'Historial, indicadores y ranking'],
   };
 
@@ -99,6 +100,8 @@ function showSection(id, el) {
   }
 
   if (id === 'mis-inscripciones') loadMisInscripciones();
+
+  if (id === 'moderador') loadModeradorAlumno();
 
   if (id === 'mi-desempeno') loadMiDesempeno();
 }
@@ -152,7 +155,7 @@ async function loadMiProyecto() {
 
     if (!proyectos.length) {
       container.innerHTML = `
-        <div class="empty">
+        <div class="empty student-project-empty">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2"></rect>
             <path d="M9 12l2 2 4-4"></path>
@@ -1040,7 +1043,22 @@ async function loadMiQR() {
       return;
     }
 
+    const horarioPendienteNotice = !aceptada.HorarioID
+      ? `
+        <div class="qr-lock-card" style="margin-bottom:16px">
+          <div class="qr-lock-title">Aula y horario pendientes</div>
+          <div class="student-inline-note">
+            Tu proyecto ya fue aceptado y el QR puede generarse. Elige un slot disponible para completar la logistica del evento.
+          </div>
+          <button class="btn btn-secondary btn-sm" style="margin-top:16px" onclick="showSection('mis-inscripciones', document.querySelector('[onclick*=mis-inscripciones]'))">
+            Elegir horario
+          </button>
+        </div>
+      `
+      : '';
+
     container.innerHTML = `
+      ${horarioPendienteNotice}
       <div class="qr-ready-shell">
         <div class="qr-guidance">
           Genera el QR cuando estes frente al evaluador. El token es temporal y evita usar codigos viejos.
@@ -1873,6 +1891,16 @@ async function loadMisInscripciones() {
             }
 
             ${
+              insc.Estado === 'aceptado' && !insc.HorarioID
+                ? `
+                  <div class="slot-picker" id="slot-picker-${insc.EventoProyectoID}">
+                    <div style="color:var(--text-muted);font-size:13px">Cargando horarios disponibles...</div>
+                  </div>
+                `
+                : ''
+            }
+
+            ${
               insc.Estado === 'rechazado'
                 ? `
                   <div style="background:rgba(232,64,64,.08);border:1px solid rgba(232,64,64,.2);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--red);margin-bottom:12px">
@@ -1892,6 +1920,10 @@ async function loadMisInscripciones() {
         `,
       )
       .join('');
+
+    inscripciones
+      .filter((insc) => insc.Estado === 'aceptado' && !insc.HorarioID)
+      .forEach((insc) => loadSlotsForInscripcion(insc.EventoProyectoID, insc.EventoID));
   } catch (error) {
     console.error(error);
 
@@ -1904,6 +1936,187 @@ async function loadMisInscripciones() {
 }
 
 // ── MI DESEMPEÑO ─────────────────────────────────────────────────────────────
+
+async function loadSlotsForInscripcion(eventoProyectoId, eventoId) {
+  const container = document.getElementById(`slot-picker-${eventoProyectoId}`);
+  if (!container) return;
+
+  try {
+    const response = await fetch(`${API}/eventos/${eventoId}/horarios-disponibles`);
+    const slots = await response.json();
+
+    if (!response.ok) {
+      throw new Error(slots.message || 'Error al cargar horarios');
+    }
+
+    if (!Array.isArray(slots) || !slots.length) {
+      container.innerHTML = `
+        <div class="notice-card notice-warning">
+          No hay slots disponibles por ahora. Intenta mas tarde o consulta con administracion.
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="slot-picker-title">Elige aula y horario</div>
+      <div class="slot-grid">
+        ${slots.map((slot) => `
+          <button class="slot-card" onclick="elegirHorarioAlumno(${eventoProyectoId},${slot.HorarioID})">
+            <span class="slot-card-aula">${escapeHtml(slot.NombreAula || 'Aula')}</span>
+            <span class="slot-card-time">${escapeHtml(String(slot.HoraInicio || '').slice(0, 5))} - ${escapeHtml(String(slot.HoraFin || '').slice(0, 5))}</span>
+          </button>
+        `).join('')}
+      </div>
+    `;
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHtml(error.message || 'Error')}</div>`;
+  }
+}
+
+async function elegirHorarioAlumno(eventoProyectoId, horarioId) {
+  try {
+    const response = await fetch(`${API}/eventos/proyectos/${eventoProyectoId}/horario`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        AlumnoID: user.id,
+        HorarioID: horarioId,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'No se pudo confirmar horario');
+    }
+
+    toast('Horario confirmado');
+    await loadMisInscripciones();
+    await loadMiQR();
+  } catch (error) {
+    console.error(error);
+    toast(error.message || 'Error al elegir horario', 'red');
+    loadMisInscripciones();
+  }
+}
+
+async function loadModeradorAlumno() {
+  const container = document.getElementById('moderador-content');
+  if (!container) return;
+
+  container.innerHTML = `<div style="color:var(--text-muted);font-size:13px">Cargando eventos...</div>`;
+
+  try {
+    const [eventosRes, postulacionesRes] = await Promise.all([
+      fetch(`${API}/eventos`),
+      fetch(`${API}/moderadores-aula?alumnoId=${user.id}`),
+    ]);
+
+    const eventos = await eventosRes.json();
+    const postulaciones = await postulacionesRes.json();
+
+    if (!eventosRes.ok) throw new Error(eventos.message || 'Error al cargar eventos');
+    if (!postulacionesRes.ok) throw new Error(postulaciones.message || 'Error al cargar postulaciones');
+
+    const candidatos = Array.isArray(eventos)
+      ? eventos.filter((e) => ['proximo', 'activo'].includes(String(e.Estado || '').toLowerCase()))
+      : [];
+
+    if (!candidatos.length) {
+      container.innerHTML = `
+        <div class="empty">
+          <h3>Sin eventos abiertos</h3>
+          <p>No hay eventos proximos o activos para postulaciones.</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="moderador-list">
+        ${candidatos.map((evento) => `
+          <div class="moderador-event-card">
+            <div class="inscripcion-header">
+              <div>
+                <div class="inscripcion-titulo">${escapeHtml(evento.Nombre)}</div>
+                <div class="inscripcion-evento">${formatFecha(evento.Fecha)} - ${escapeHtml(evento.Estado)}</div>
+              </div>
+            </div>
+            <div id="moderador-aulas-${evento.EventoID}" class="slot-grid">
+              <div style="color:var(--text-muted);font-size:13px">Cargando aulas...</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    candidatos.forEach((evento) => loadAulasModerador(evento.EventoID, postulaciones));
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHtml(error.message || 'Error')}</div>`;
+  }
+}
+
+async function loadAulasModerador(eventoId, postulaciones = []) {
+  const container = document.getElementById(`moderador-aulas-${eventoId}`);
+  if (!container) return;
+
+  try {
+    const response = await fetch(`${API}/eventos/${eventoId}/aulas-resumen`);
+    const aulas = await response.json();
+
+    if (!response.ok) throw new Error(aulas.message || 'Error al cargar aulas');
+
+    if (!Array.isArray(aulas) || !aulas.length) {
+      container.innerHTML = `<div style="color:var(--text-muted);font-size:13px">Este evento aun no tiene aulas.</div>`;
+      return;
+    }
+
+    container.innerHTML = aulas.map((aula) => {
+      const postulacion = postulaciones.find((p) => Number(p.EventoID) === Number(eventoId) && Number(p.AulaID) === Number(aula.AulaID));
+      const bloqueada = Boolean(aula.Moderador) || Boolean(postulacion);
+      const label = aula.Moderador
+        ? `Moderador: ${aula.Moderador}`
+        : postulacion
+          ? `Tu postulacion esta ${postulacion.Estado}`
+          : `${Number(aula.SlotsDisponibles || 0)} slots disponibles`;
+
+      return `
+        <button class="slot-card" ${bloqueada ? 'disabled' : ''} onclick="postularModerador(${eventoId},${aula.AulaID})">
+          <span class="slot-card-aula">${escapeHtml(aula.NombreAula || 'Aula')}</span>
+          <span class="slot-card-time">${escapeHtml(label)}</span>
+        </button>
+      `;
+    }).join('');
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHtml(error.message || 'Error')}</div>`;
+  }
+}
+
+async function postularModerador(eventoId, aulaId) {
+  try {
+    const response = await fetch(`${API}/moderadores-aula`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        EventoID: eventoId,
+        AulaID: aulaId,
+        AlumnoID: user.id,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message || 'No se pudo enviar postulacion');
+
+    toast('Postulacion enviada');
+    loadModeradorAlumno();
+  } catch (error) {
+    console.error(error);
+    toast(error.message || 'Error al postularte', 'red');
+  }
+}
 
 async function loadMiDesempeno() {
   if (!proyectoActualId) {
@@ -1942,6 +2155,7 @@ async function loadMiDesempeno() {
   loadDesempHistorial();
   loadDesempIndicadores();
   loadDesempRankingEventos();
+  loadPodiosAlumno();
 }
 
 async function loadDesempEvaluaciones() {
@@ -2345,6 +2559,42 @@ async function loadDesempRanking() {
 }
 
 // ── DOCUMENTOS ───────────────────────────────────────────────────────────────
+
+async function loadPodiosAlumno() {
+  const container = document.getElementById('desemp-podios');
+  if (!container) return;
+
+  container.innerHTML = `<div style="color:var(--text-muted);font-size:13px">Cargando podios...</div>`;
+
+  try {
+    const response = await fetch(`${API}/eventos/pasados/podio`);
+    const podios = await response.json();
+
+    if (!response.ok) throw new Error(podios.message || 'Error al cargar podios');
+
+    if (!Array.isArray(podios) || !podios.length) {
+      container.innerHTML = `<div style="color:var(--text-muted);font-size:13px">Aun no hay eventos finalizados con podio.</div>`;
+      return;
+    }
+
+    container.innerHTML = podios.map((item) => `
+      <div class="podio-row ${Number(item.ProyectoID) === Number(proyectoActualId) ? 'is-mine' : ''}">
+        <div class="podio-pos">${item.Posicion}</div>
+        <div class="podio-main">
+          <div class="podio-title">${escapeHtml(item.Titulo || 'Proyecto')}</div>
+          <div class="podio-meta">${escapeHtml(item.NombreEvento || 'Evento')} - ${formatFecha(item.FechaEvento)}</div>
+          <div class="podio-meta">Integrantes: ${escapeHtml(item.Integrantes || item.NombreAlumno || '-')}</div>
+          <div class="podio-meta">Profesor de apoyo: ${escapeHtml(item.NombreProfesorApoyo || 'Sin asignar')}</div>
+        </div>
+        <div class="podio-score">${Number(item.PromedioFinal || 0).toFixed(2)}</div>
+        ${item.EntregaID ? `<a class="btn btn-ghost btn-sm" href="${API}/entregas/${item.EntregaID}/ver" target="_blank">Leer PDF</a>` : ''}
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = `<div style="color:var(--red);font-size:13px">${escapeHtml(error.message || 'Error')}</div>`;
+  }
+}
 
 function abrirSubir() {
   const modal = document.getElementById('modal-subir-doc');

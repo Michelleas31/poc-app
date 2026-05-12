@@ -65,6 +65,115 @@ function validarRubricaPayload(body = {}) {
   return { Nombre, Descripcion, criterios };
 }
 
+async function calcularResultadosEvento(eventoId) {
+  const [promedios] = await dbPromise.query(
+    `SELECT
+       ep.EventoID,
+       ep.ProyectoID,
+       ROUND(AVG(ee.PuntajeTotal), 2) AS PromedioFinal,
+       COUNT(DISTINCT ee.ProfesorID) AS TotalEvaluadores
+     FROM eventoproyectos ep
+     JOIN evaluacionesevento ee
+       ON ee.EventoID = ep.EventoID
+      AND ee.ProyectoID = ep.ProyectoID
+     WHERE ep.EventoID = ?
+       AND ep.Estado = 'aceptado'
+     GROUP BY ep.EventoID, ep.ProyectoID
+     HAVING TotalEvaluadores > 0
+     ORDER BY PromedioFinal DESC, ep.ProyectoID ASC`,
+    [eventoId]
+  );
+
+  await dbPromise.query("DELETE FROM resultadosevento WHERE EventoID = ?", [eventoId]);
+
+  if (!promedios.length) return [];
+
+  const valores = promedios.map((row, index) => [
+    eventoId,
+    row.ProyectoID,
+    row.PromedioFinal,
+    index + 1,
+  ]);
+
+  await dbPromise.query(
+    `INSERT INTO resultadosevento
+       (EventoID, ProyectoID, PromedioFinal, Posicion)
+     VALUES ?`,
+    [valores]
+  );
+
+  return promedios.map((row, index) => ({ ...row, Posicion: index + 1 }));
+}
+
+async function obtenerPodio(eventoId = null) {
+  const params = [];
+  let where = "ev.Estado = 'finalizado' AND r.Posicion <= 3";
+
+  if (eventoId) {
+    where += " AND r.EventoID = ?";
+    params.push(eventoId);
+  }
+
+  const [rows] = await dbPromise.query(
+    `SELECT
+       r.ResultadoID,
+       r.EventoID,
+       ev.Nombre AS NombreEvento,
+       ev.Fecha AS FechaEvento,
+       r.ProyectoID,
+       p.Titulo,
+       r.PromedioFinal,
+       r.Posicion,
+       al.Nombre AS NombreAlumno,
+       COALESCE((
+         SELECT GROUP_CONCAT(DISTINCT integrante.Nombre ORDER BY integrante.Nombre SEPARATOR ', ')
+         FROM proyectoparticipantes pp
+         JOIN usuarios integrante ON integrante.UsuarioID = pp.UsuarioID
+         WHERE pp.ProyectoID = p.ProyectoID
+       ), al.Nombre) AS Integrantes,
+       apoyo.Nombre AS NombreProfesorApoyo,
+       entrega.EntregaID,
+       entrega.ArchivoEntrega,
+       entrega.MimeType,
+       entrega.RutaExterna
+     FROM resultadosevento r
+     JOIN eventos ev ON ev.EventoID = r.EventoID
+     JOIN proyectos p ON p.ProyectoID = r.ProyectoID
+     JOIN usuarios al ON al.UsuarioID = p.AlumnoID
+     LEFT JOIN usuarios apoyo ON apoyo.UsuarioID = p.ProfesorID
+     LEFT JOIN entregas entrega
+       ON entrega.EntregaID = (
+         SELECT e2.EntregaID
+         FROM entregas e2
+         WHERE e2.ProyectoID = p.ProyectoID
+         ORDER BY e2.FechaEntrega DESC, e2.EntregaID DESC
+         LIMIT 1
+       )
+     WHERE ${where}
+     ORDER BY ev.Fecha DESC, r.Posicion ASC`,
+    params
+  );
+
+  return rows;
+}
+
+function especialidadesRepetidas(rows) {
+  const conteo = new Map();
+  rows.forEach((row) => {
+    String(row.Especialidades || "")
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .forEach((nombre) => {
+        conteo.set(nombre, (conteo.get(nombre) || 0) + 1);
+      });
+  });
+
+  return Array.from(conteo.entries())
+    .filter(([, total]) => total > 1)
+    .map(([nombre]) => nombre);
+}
+
 // ══════════════════════════════════════════
 // USUARIOS
 // ══════════════════════════════════════════
@@ -80,35 +189,73 @@ router.get("/usuarios", (req, res) => {
   });
 });
 
-router.post("/usuarios", (req, res) => {
-  const { Nombre, Email, Rol, Contraseña } = req.body;
-  if (!Nombre || !Email || !Rol || !Contraseña)
-    return res.status(400).json({ message: "Faltan campos obligatorios" });
+router.post("/usuarios", async (req, res) => {
+  const { Nombre, Email, Rol } = req.body;
+  const password = req.body.Contraseña || req.body["ContraseÃ±a"] || req.body.Contrasena || req.body.Password;
 
-  db.query(
-    "INSERT INTO usuarios (Nombre, Email, Contraseña, Rol) VALUES (?, ?, ?, ?)",
-    [Nombre, Email, Contraseña, Rol],
-    (err, result) => {
-      if (err) return res.status(500).json(err);
-      res.json({ message: "Usuario creado", UsuarioID: result.insertId });
+  if (!Nombre || !Email || !Rol || !password) {
+    return res.status(400).json({ message: "Faltan campos obligatorios" });
+  }
+
+  try {
+    const [result] = await dbPromise.query(
+      "INSERT INTO usuarios (Nombre, Email, Contraseña, Rol) VALUES (?, ?, ?, ?)",
+      [Nombre, Email, password, Rol]
+    );
+
+    const [[usuario]] = await dbPromise.query(
+      "SELECT UsuarioID, Nombre, Email, Rol, Activo, CreatedAt, UpdatedAt FROM usuarios WHERE UsuarioID = ?",
+      [result.insertId]
+    );
+
+    res.status(201).json({ message: "Usuario creado", UsuarioID: result.insertId, usuario });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ message: "Ya existe un usuario con ese correo" });
     }
-  );
+
+    console.error("POST /api/usuarios:", err);
+    res.status(500).json({ message: "Error al crear usuario", error: err.message });
+  }
 });
 
-router.put("/usuarios/:id", (req, res) => {
-  const { Nombre, Email, Rol, Contraseña } = req.body;
+router.put("/usuarios/:id", async (req, res) => {
+  const { Nombre, Email, Rol } = req.body;
+  const password = req.body.Contraseña || req.body["ContraseÃ±a"] || req.body.Contrasena || req.body.Password;
   const campos = [], valores = [];
-  if (Nombre)    { campos.push("Nombre = ?");    valores.push(Nombre); }
-  if (Email)     { campos.push("Email = ?");     valores.push(Email); }
-  if (Rol)       { campos.push("Rol = ?");       valores.push(Rol); }
-  if (Contraseña){ campos.push("Contraseña = ?"); valores.push(Contraseña); }
+
+  if (Nombre) { campos.push("Nombre = ?"); valores.push(Nombre); }
+  if (Email)  { campos.push("Email = ?"); valores.push(Email); }
+  if (Rol)    { campos.push("Rol = ?"); valores.push(Rol); }
+  if (password) { campos.push("Contraseña = ?"); valores.push(password); }
   if (!campos.length) return res.status(400).json({ message: "Nada que actualizar" });
 
   valores.push(req.params.id);
-  db.query(`UPDATE usuarios SET ${campos.join(", ")} WHERE UsuarioID = ?`, valores, (err) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Usuario actualizado" });
-  });
+
+  try {
+    const [result] = await dbPromise.query(
+      `UPDATE usuarios SET ${campos.join(", ")} WHERE UsuarioID = ?`,
+      valores
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    const [[usuario]] = await dbPromise.query(
+      "SELECT UsuarioID, Nombre, Email, Rol, Activo, CreatedAt, UpdatedAt FROM usuarios WHERE UsuarioID = ?",
+      [req.params.id]
+    );
+
+    res.json({ message: "Usuario actualizado", usuario });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ message: "Ya existe un usuario con ese correo" });
+    }
+
+    console.error("PUT /api/usuarios/:id:", err);
+    res.status(500).json({ message: "Error al actualizar usuario", error: err.message });
+  }
 });
 
 router.put("/usuarios/:id/toggle", (req, res) => {
@@ -173,7 +320,7 @@ router.post("/eventos", (req, res) => {
 });
 
 // PUT editar evento
-router.put("/eventos/:id", (req, res) => {
+router.put("/eventos/:id", async (req, res) => {
   const { Nombre, Descripcion, Fecha, HoraInicio, HoraFin, Estado, RubricaID } = req.body;
   const campos = [], valores = [];
   if (Nombre)                    { campos.push("Nombre = ?");      valores.push(Nombre); }
@@ -186,10 +333,24 @@ router.put("/eventos/:id", (req, res) => {
   if (!campos.length) return res.status(400).json({ message: "Nada que actualizar" });
 
   valores.push(req.params.id);
-  db.query(`UPDATE eventos SET ${campos.join(", ")} WHERE EventoID = ?`, valores, (err) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Evento actualizado" });
-  });
+  try {
+    await dbPromise.query(`UPDATE eventos SET ${campos.join(", ")} WHERE EventoID = ?`, valores);
+
+    let resultados = null;
+    if (Estado === "finalizado") {
+      resultados = await calcularResultadosEvento(req.params.id);
+    }
+
+    res.json({
+      message: Estado === "finalizado"
+        ? "Evento actualizado y podio recalculado"
+        : "Evento actualizado",
+      resultadosGenerados: resultados ? resultados.length : undefined,
+    });
+  } catch (err) {
+    console.error("PUT /api/eventos/:id:", err);
+    res.status(500).json({ message: "Error al actualizar evento", error: err.message });
+  }
 });
 
 // DELETE evento
@@ -203,6 +364,36 @@ router.delete("/eventos/:id", (req, res) => {
 // GET ranking de proyectos de un evento ordenado por puntaje DESC
 router.get("/eventos/:id/ranking", async (req, res) => {
   try {
+    const [resultados] = await dbPromise.query(
+      `SELECT
+         p.ProyectoID,
+         p.Titulo,
+         p.Progreso,
+         u.Nombre AS NombreAlumno,
+         ep.Estado AS EstadoInscripcion,
+         r.Posicion,
+         r.PromedioFinal AS Promedio,
+         r.PromedioFinal AS PuntajeTotal,
+         r.PromedioFinal AS MejorPuntaje,
+         COUNT(DISTINCT ee.EvalEventoID) AS TotalEvaluaciones
+       FROM resultadosevento r
+       JOIN proyectos p ON p.ProyectoID = r.ProyectoID
+       JOIN usuarios u ON u.UsuarioID = p.AlumnoID
+       JOIN eventoproyectos ep ON ep.EventoID = r.EventoID AND ep.ProyectoID = r.ProyectoID
+       LEFT JOIN evaluacionesevento ee ON ee.EventoID = r.EventoID AND ee.ProyectoID = r.ProyectoID
+       WHERE r.EventoID = ?
+       GROUP BY r.ResultadoID
+       ORDER BY r.Posicion ASC`,
+      [req.params.id]
+    );
+
+    if (resultados.length) {
+      return res.json(resultados.map((r) => ({
+        ...r,
+        Promedio: Number(r.Promedio || 0).toFixed(2),
+      })));
+    }
+
     const [rows] = await dbPromise.query(
       `SELECT
          p.ProyectoID,
@@ -239,6 +430,26 @@ router.get("/eventos/:id/ranking", async (req, res) => {
 // ══════════════════════════════════════════
 // AULAS
 // ══════════════════════════════════════════
+
+router.get("/eventos/pasados/podio", async (_req, res) => {
+  try {
+    const rows = await obtenerPodio();
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/eventos/pasados/podio:", err);
+    res.status(500).json({ message: "Error al cargar podios historicos", error: err.message });
+  }
+});
+
+router.get("/eventos/:id/podio", async (req, res) => {
+  try {
+    const rows = await obtenerPodio(req.params.id);
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/eventos/:id/podio:", err);
+    res.status(500).json({ message: "Error al cargar podio", error: err.message });
+  }
+});
 
 router.get("/aulas", (req, res) => {
   db.query("SELECT * FROM aulas ORDER BY Nombre", (err, results) => {
@@ -312,6 +523,529 @@ router.delete("/horarios/:id", (req, res) => {
 // ══════════════════════════════════════════
 // RÚBRICAS
 // ══════════════════════════════════════════
+
+router.get("/eventos/:id/horarios-disponibles", async (req, res) => {
+  try {
+    const mostrarTodos = String(req.query.all || "") === "1";
+    const [rows] = await dbPromise.query(
+      `SELECT
+         h.HorarioID,
+         h.EventoID,
+         h.AulaID,
+         h.HoraInicio,
+         h.HoraFin,
+         h.Disponible,
+         a.Nombre AS NombreAula,
+         ocupada.EventoProyectoID AS OcupadoPor,
+         CASE
+           WHEN h.Disponible = 1 AND ocupada.EventoProyectoID IS NULL THEN 1
+           ELSE 0
+         END AS DisponibleReal
+       FROM horariosevento h
+       JOIN aulas a ON a.AulaID = h.AulaID
+       LEFT JOIN eventoproyectos ocupada
+         ON ocupada.HorarioID = h.HorarioID
+        AND ocupada.Estado = 'aceptado'
+       WHERE h.EventoID = ?
+       ${mostrarTodos ? "" : "HAVING DisponibleReal = 1"}
+       ORDER BY a.Nombre ASC, h.HoraInicio ASC`,
+      [req.params.id]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/eventos/:id/horarios-disponibles:", err);
+    res.status(500).json({ message: "Error al cargar horarios disponibles", error: err.message });
+  }
+});
+
+router.put("/eventos/proyectos/:id/horario", async (req, res) => {
+  const horarioId = obtenerEntero(req.body.HorarioID || req.body.horarioId);
+  const alumnoId = obtenerEntero(req.body.AlumnoID || req.body.alumnoId);
+
+  if (!horarioId || !alumnoId) {
+    return res.status(400).json({ message: "AlumnoID y HorarioID son obligatorios" });
+  }
+
+  const conn = dbPromise;
+
+  try {
+    await conn.beginTransaction();
+
+    const [[ep]] = await conn.query(
+      `SELECT
+         ep.EventoProyectoID,
+         ep.EventoID,
+         ep.ProyectoID,
+         ep.HorarioID AS HorarioAnteriorID,
+         ep.Estado,
+         p.AlumnoID,
+         ev.Fecha
+       FROM eventoproyectos ep
+       JOIN proyectos p ON p.ProyectoID = ep.ProyectoID
+       JOIN eventos ev ON ev.EventoID = ep.EventoID
+       WHERE ep.EventoProyectoID = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [req.params.id]
+    );
+
+    if (!ep) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Inscripcion no encontrada" });
+    }
+
+    if (Number(ep.AlumnoID) !== Number(alumnoId)) {
+      await conn.rollback();
+      return res.status(403).json({ message: "Este alumno no puede modificar esta inscripcion" });
+    }
+
+    if (ep.Estado !== "aceptado") {
+      await conn.rollback();
+      return res.status(409).json({ message: "El proyecto debe estar aceptado antes de elegir horario" });
+    }
+
+    const [[horario]] = await conn.query(
+      `SELECT h.*, a.Nombre AS NombreAula
+       FROM horariosevento h
+       JOIN aulas a ON a.AulaID = h.AulaID
+       WHERE h.HorarioID = ?
+         AND h.EventoID = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [horarioId, ep.EventoID]
+    );
+
+    if (!horario) {
+      await conn.rollback();
+      return res.status(404).json({ message: "El horario no pertenece a este evento" });
+    }
+
+    const [[tomado]] = await conn.query(
+      `SELECT EventoProyectoID
+       FROM eventoproyectos
+       WHERE HorarioID = ?
+         AND EventoProyectoID <> ?
+         AND Estado = 'aceptado'
+       LIMIT 1
+       FOR UPDATE`,
+      [horarioId, ep.EventoProyectoID]
+    );
+
+    if (tomado || Number(horario.Disponible) !== 1) {
+      await conn.rollback();
+      return res.status(409).json({ message: "Ese horario ya no esta disponible" });
+    }
+
+    if (ep.HorarioAnteriorID && Number(ep.HorarioAnteriorID) !== Number(horarioId)) {
+      await conn.query("UPDATE horariosevento SET Disponible = 1 WHERE HorarioID = ?", [ep.HorarioAnteriorID]);
+    }
+
+    await conn.query(
+      `UPDATE eventoproyectos
+       SET HorarioID = ?,
+           FechaEvaluacion = ?,
+           HoraInicio = ?,
+           HoraFin = ?,
+           Sala = ?
+       WHERE EventoProyectoID = ?`,
+      [horarioId, ep.Fecha, horario.HoraInicio, horario.HoraFin, horario.NombreAula, ep.EventoProyectoID]
+    );
+
+    await conn.query("UPDATE horariosevento SET Disponible = 0 WHERE HorarioID = ?", [horarioId]);
+    await conn.commit();
+
+    res.json({
+      message: "Horario seleccionado",
+      HorarioID: horarioId,
+      AulaID: horario.AulaID,
+      NombreAula: horario.NombreAula,
+      HoraInicio: horario.HoraInicio,
+      HoraFin: horario.HoraFin,
+    });
+  } catch (err) {
+    try { await conn.rollback(); } catch (_) {}
+    console.error("PUT /api/eventos/proyectos/:id/horario:", err);
+    res.status(500).json({ message: "Error al confirmar horario", error: err.message });
+  }
+});
+
+router.get("/eventos/:id/aulas-resumen", async (req, res) => {
+  try {
+    const [rows] = await dbPromise.query(
+      `SELECT
+         base.AulaID,
+         a.Nombre AS NombreAula,
+         a.Capacidad,
+         (
+           SELECT COUNT(*)
+           FROM horariosevento h2
+           WHERE h2.EventoID = base.EventoID
+             AND h2.AulaID = base.AulaID
+         ) AS TotalSlots,
+         (
+           SELECT COUNT(*)
+           FROM horariosevento h3
+           LEFT JOIN eventoproyectos ep3
+             ON ep3.HorarioID = h3.HorarioID
+            AND ep3.Estado = 'aceptado'
+           WHERE h3.EventoID = base.EventoID
+             AND h3.AulaID = base.AulaID
+             AND h3.Disponible = 1
+             AND ep3.EventoProyectoID IS NULL
+         ) AS SlotsDisponibles,
+         (
+           SELECT GROUP_CONCAT(DISTINCT prof.Nombre ORDER BY prof.Nombre SEPARATOR ', ')
+           FROM evaluadoresaula ea
+           JOIN usuarios prof ON prof.UsuarioID = ea.ProfesorID
+           WHERE ea.EventoID = base.EventoID
+             AND ea.AulaID = base.AulaID
+         ) AS Evaluadores,
+         (
+           SELECT COUNT(DISTINCT ea2.ProfesorID)
+           FROM evaluadoresaula ea2
+           WHERE ea2.EventoID = base.EventoID
+             AND ea2.AulaID = base.AulaID
+         ) AS TotalEvaluadores,
+         (
+           SELECT alumno.Nombre
+           FROM moderadoresaula ma
+           JOIN usuarios alumno ON alumno.UsuarioID = ma.AlumnoID
+           WHERE ma.EventoID = base.EventoID
+             AND ma.AulaID = base.AulaID
+             AND ma.Estado = 'aceptado'
+           ORDER BY ma.CreatedAt ASC
+           LIMIT 1
+         ) AS Moderador,
+         (
+           SELECT COUNT(*)
+           FROM moderadoresaula ma2
+           WHERE ma2.EventoID = base.EventoID
+             AND ma2.AulaID = base.AulaID
+             AND ma2.Estado = 'pendiente'
+         ) AS PostulacionesPendientes
+       FROM (
+         SELECT DISTINCT EventoID, AulaID
+         FROM horariosevento
+         WHERE EventoID = ?
+       ) base
+       JOIN aulas a ON a.AulaID = base.AulaID
+       ORDER BY a.Nombre ASC`,
+      [req.params.id]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/eventos/:id/aulas-resumen:", err);
+    res.status(500).json({ message: "Error al cargar aulas del evento", error: err.message });
+  }
+});
+
+router.get("/profesores/evaluadores-candidatos", async (_req, res) => {
+  try {
+    const [rows] = await dbPromise.query(
+      `SELECT
+         u.UsuarioID,
+         u.Nombre,
+         u.Email,
+         COALESCE(GROUP_CONCAT(DISTINCT esp.Nombre ORDER BY esp.Nombre SEPARATOR ', '), '') AS Especialidades,
+         COALESCE(GROUP_CONCAT(DISTINCT pe.Departamento ORDER BY pe.Departamento SEPARATOR ', '), '') AS Departamentos
+       FROM usuarios u
+       LEFT JOIN profesorespecialidad pe ON pe.ProfesorID = u.UsuarioID
+       LEFT JOIN especialidades esp ON esp.EspecialidadID = pe.EspecialidadID
+       WHERE u.Rol = 'Profesor'
+         AND u.Activo = 1
+       GROUP BY u.UsuarioID
+       ORDER BY u.Nombre ASC`
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/profesores/evaluadores-candidatos:", err);
+    res.status(500).json({ message: "Error al cargar profesores", error: err.message });
+  }
+});
+
+router.get("/eventos/:eventoId/aulas/:aulaId/evaluadores", async (req, res) => {
+  try {
+    const [rows] = await dbPromise.query(
+      `SELECT
+         ea.EvaluadorAulaID,
+         ea.EventoID,
+         ea.AulaID,
+         ea.ProfesorID,
+         u.Nombre,
+         u.Email,
+         COALESCE(GROUP_CONCAT(DISTINCT esp.Nombre ORDER BY esp.Nombre SEPARATOR ', '), '') AS Especialidades,
+         COALESCE(GROUP_CONCAT(DISTINCT pe.Departamento ORDER BY pe.Departamento SEPARATOR ', '), '') AS Departamentos
+       FROM evaluadoresaula ea
+       JOIN usuarios u ON u.UsuarioID = ea.ProfesorID
+       LEFT JOIN profesorespecialidad pe ON pe.ProfesorID = u.UsuarioID
+       LEFT JOIN especialidades esp ON esp.EspecialidadID = pe.EspecialidadID
+       WHERE ea.EventoID = ?
+         AND ea.AulaID = ?
+       GROUP BY ea.EvaluadorAulaID
+       ORDER BY u.Nombre ASC`,
+      [req.params.eventoId, req.params.aulaId]
+    );
+
+    res.json({
+      evaluadores: rows,
+      especialidadesRepetidas: especialidadesRepetidas(rows),
+    });
+  } catch (err) {
+    console.error("GET /api/eventos/:eventoId/aulas/:aulaId/evaluadores:", err);
+    res.status(500).json({ message: "Error al cargar evaluadores del aula", error: err.message });
+  }
+});
+
+router.put("/eventos/:eventoId/aulas/:aulaId/evaluadores", async (req, res) => {
+  const profesores = Array.isArray(req.body.profesores)
+    ? req.body.profesores.map((id) => obtenerEntero(id)).filter(Boolean)
+    : [];
+
+  if (profesores.length > 3) {
+    return res.status(400).json({ message: "Solo puedes asignar hasta 3 evaluadores por aula" });
+  }
+
+  try {
+    if (profesores.length) {
+      const [validos] = await dbPromise.query(
+        `SELECT UsuarioID
+         FROM usuarios
+         WHERE Rol = 'Profesor'
+           AND Activo = 1
+           AND UsuarioID IN (?)`,
+        [profesores]
+      );
+
+      if (validos.length !== profesores.length) {
+        return res.status(400).json({ message: "Uno o mas evaluadores no son profesores activos" });
+      }
+    }
+
+    await dbPromise.query(
+      "DELETE FROM evaluadoresaula WHERE EventoID = ? AND AulaID = ?",
+      [req.params.eventoId, req.params.aulaId]
+    );
+
+    if (profesores.length) {
+      const valores = profesores.map((profesorId) => [
+        req.params.eventoId,
+        req.params.aulaId,
+        profesorId,
+        0,
+      ]);
+      await dbPromise.query(
+        `INSERT INTO evaluadoresaula
+           (EventoID, AulaID, ProfesorID, EsModeradorExterno)
+         VALUES ?`,
+        [valores]
+      );
+    }
+
+    const [asignados] = await dbPromise.query(
+      `SELECT
+         u.UsuarioID AS ProfesorID,
+         u.Nombre,
+         COALESCE(GROUP_CONCAT(DISTINCT esp.Nombre ORDER BY esp.Nombre SEPARATOR ', '), '') AS Especialidades,
+         COALESCE(GROUP_CONCAT(DISTINCT pe.Departamento ORDER BY pe.Departamento SEPARATOR ', '), '') AS Departamentos
+       FROM usuarios u
+       LEFT JOIN profesorespecialidad pe ON pe.ProfesorID = u.UsuarioID
+       LEFT JOIN especialidades esp ON esp.EspecialidadID = pe.EspecialidadID
+       WHERE u.UsuarioID IN (?)
+       GROUP BY u.UsuarioID
+       ORDER BY u.Nombre ASC`,
+      [profesores.length ? profesores : [0]]
+    );
+
+    res.json({
+      message: "Evaluadores de aula actualizados",
+      evaluadores: asignados,
+      especialidadesRepetidas: especialidadesRepetidas(asignados),
+    });
+  } catch (err) {
+    console.error("PUT /api/eventos/:eventoId/aulas/:aulaId/evaluadores:", err);
+    res.status(500).json({ message: "Error al asignar evaluadores", error: err.message });
+  }
+});
+
+router.get("/moderadores-aula", async (req, res) => {
+  const params = [];
+  let where = "1=1";
+
+  if (req.query.eventoId) {
+    where += " AND ma.EventoID = ?";
+    params.push(req.query.eventoId);
+  }
+
+  if (req.query.alumnoId) {
+    where += " AND ma.AlumnoID = ?";
+    params.push(req.query.alumnoId);
+  }
+
+  if (req.query.estado) {
+    where += " AND ma.Estado = ?";
+    params.push(req.query.estado);
+  }
+
+  try {
+    const [rows] = await dbPromise.query(
+      `SELECT
+         ma.*,
+         ev.Nombre AS NombreEvento,
+         ev.Fecha AS FechaEvento,
+         a.Nombre AS NombreAula,
+         alumno.Nombre AS NombreAlumno,
+         alumno.Email AS EmailAlumno,
+         alumno.Semestre
+       FROM moderadoresaula ma
+       JOIN eventos ev ON ev.EventoID = ma.EventoID
+       JOIN aulas a ON a.AulaID = ma.AulaID
+       JOIN usuarios alumno ON alumno.UsuarioID = ma.AlumnoID
+       WHERE ${where}
+       ORDER BY ma.CreatedAt DESC`,
+      params
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/moderadores-aula:", err);
+    res.status(500).json({ message: "Error al cargar postulaciones", error: err.message });
+  }
+});
+
+router.post("/moderadores-aula", async (req, res) => {
+  const eventoId = obtenerEntero(req.body.EventoID || req.body.eventoId);
+  const aulaId = obtenerEntero(req.body.AulaID || req.body.aulaId);
+  const alumnoId = obtenerEntero(req.body.AlumnoID || req.body.alumnoId);
+
+  if (!eventoId || !aulaId || !alumnoId) {
+    return res.status(400).json({ message: "EventoID, AulaID y AlumnoID son obligatorios" });
+  }
+
+  try {
+    const [[alumno]] = await dbPromise.query(
+      "SELECT UsuarioID, Rol, Semestre FROM usuarios WHERE UsuarioID = ? LIMIT 1",
+      [alumnoId]
+    );
+
+    if (!alumno || alumno.Rol !== "Alumno") {
+      return res.status(403).json({ message: "Solo alumnos pueden postularse como moderadores" });
+    }
+
+    if (alumno.Semestre && Number(alumno.Semestre) > 2) {
+      return res.status(403).json({ message: "Solo alumnos de primero o segundo semestre pueden postularse" });
+    }
+
+    const [[eventoAula]] = await dbPromise.query(
+      `SELECT h.HorarioID
+       FROM horariosevento h
+       JOIN eventos ev ON ev.EventoID = h.EventoID
+       WHERE h.EventoID = ?
+         AND h.AulaID = ?
+         AND ev.Estado IN ('proximo', 'activo')
+       LIMIT 1`,
+      [eventoId, aulaId]
+    );
+
+    if (!eventoAula) {
+      return res.status(404).json({ message: "El aula no esta disponible para postulaciones en este evento" });
+    }
+
+    const [[moderadorAceptado]] = await dbPromise.query(
+      `SELECT ModeradorID
+       FROM moderadoresaula
+       WHERE EventoID = ?
+         AND AulaID = ?
+         AND Estado = 'aceptado'
+       LIMIT 1`,
+      [eventoId, aulaId]
+    );
+
+    if (moderadorAceptado) {
+      return res.status(409).json({ message: "Esta aula ya tiene moderador aceptado" });
+    }
+
+    const [result] = await dbPromise.query(
+      `INSERT INTO moderadoresaula
+         (EventoID, AulaID, AlumnoID, Estado)
+       VALUES (?, ?, ?, 'pendiente')`,
+      [eventoId, aulaId, alumnoId]
+    );
+
+    res.status(201).json({
+      message: "Postulacion enviada",
+      ModeradorID: result.insertId,
+    });
+  } catch (err) {
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ message: "Ya existe una postulacion para esta aula" });
+    }
+
+    console.error("POST /api/moderadores-aula:", err);
+    res.status(500).json({ message: "Error al enviar postulacion", error: err.message });
+  }
+});
+
+router.put("/moderadores-aula/:id/estado", async (req, res) => {
+  const { Estado } = req.body;
+
+  if (!["pendiente", "aceptado", "rechazado"].includes(Estado)) {
+    return res.status(400).json({ message: "Estado invalido" });
+  }
+
+  const conn = dbPromise;
+
+  try {
+    await conn.beginTransaction();
+
+    const [[postulacion]] = await conn.query(
+      `SELECT *
+       FROM moderadoresaula
+       WHERE ModeradorID = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [req.params.id]
+    );
+
+    if (!postulacion) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Postulacion no encontrada" });
+    }
+
+    if (Estado === "aceptado") {
+      const [[actual]] = await conn.query(
+        `SELECT ModeradorID
+         FROM moderadoresaula
+         WHERE EventoID = ?
+           AND AulaID = ?
+           AND Estado = 'aceptado'
+           AND ModeradorID <> ?
+         LIMIT 1
+         FOR UPDATE`,
+        [postulacion.EventoID, postulacion.AulaID, postulacion.ModeradorID]
+      );
+
+      if (actual) {
+        await conn.rollback();
+        return res.status(409).json({ message: "Esta aula ya tiene moderador aceptado" });
+      }
+    }
+
+    await conn.query(
+      "UPDATE moderadoresaula SET Estado = ? WHERE ModeradorID = ?",
+      [Estado, req.params.id]
+    );
+
+    await conn.commit();
+    res.json({ message: "Postulacion actualizada" });
+  } catch (err) {
+    try { await conn.rollback(); } catch (_) {}
+    console.error("PUT /api/moderadores-aula/:id/estado:", err);
+    res.status(500).json({ message: "Error al actualizar postulacion", error: err.message });
+  }
+});
 
 router.get("/rubricas", async (req, res) => {
   try {
@@ -465,7 +1199,7 @@ router.delete("/rubricas/:id", async (req, res) => {
 router.get("/eventos/proyectos", (req, res) => {
   const { eventoId, estado, proyectoId } = req.query;
   let query = `
-    SELECT ep.EventoProyectoID, ep.Estado, ep.CreatedAt, ep.HorarioID,
+    SELECT ep.EventoProyectoID, ep.EventoID, ep.Estado, ep.CreatedAt, ep.HorarioID,
            ep.QRCode, ep.TokenQR,
            ep.FechaEvaluacion, ep.HoraInicio AS HoraEval, ep.HoraFin AS HoraFinEval,
            ep.Sala AS SalaEval, ep.ComentarioAdmin,
@@ -473,15 +1207,15 @@ router.get("/eventos/proyectos", (req, res) => {
            e.Nombre AS NombreEvento, e.Fecha AS FechaEvento,
            u.Nombre AS NombreAlumno,
            a.Nombre AS NombreAula, h.HoraInicio, h.HoraFin,
-           GROUP_CONCAT(ev_u.Nombre SEPARATOR ', ') AS Evaluadores
+           GROUP_CONCAT(DISTINCT ev_u.Nombre ORDER BY ev_u.Nombre SEPARATOR ', ') AS Evaluadores
     FROM eventoproyectos ep
     JOIN proyectos p        ON ep.ProyectoID = p.ProyectoID
     JOIN eventos e          ON ep.EventoID   = e.EventoID
     JOIN usuarios u         ON p.AlumnoID    = u.UsuarioID
     LEFT JOIN horariosevento h  ON ep.HorarioID  = h.HorarioID
     LEFT JOIN aulas a           ON h.AulaID       = a.AulaID
-    LEFT JOIN evaluadoresevento ee  ON ep.EventoProyectoID = ee.EventoProyectoID
-    LEFT JOIN usuarios ev_u         ON ee.ProfesorID       = ev_u.UsuarioID
+    LEFT JOIN evaluadoresaula ea    ON ea.EventoID = ep.EventoID AND ea.AulaID = h.AulaID
+    LEFT JOIN usuarios ev_u         ON ea.ProfesorID = ev_u.UsuarioID
     WHERE 1=1`;
   const params = [];
   if (eventoId)   { query += " AND ep.EventoID   = ?"; params.push(eventoId); }
@@ -588,12 +1322,12 @@ router.get("/eventos/:id/proyectos/aceptados", (req, res) => {
     `SELECT ep.EventoProyectoID,
             p.Titulo AS TituloProyecto,
             a.Nombre AS NombreAula, h.HoraInicio, h.HoraFin,
-            GROUP_CONCAT(u.Nombre SEPARATOR ', ') AS Evaluadores
+            GROUP_CONCAT(DISTINCT u.Nombre ORDER BY u.Nombre SEPARATOR ', ') AS Evaluadores
      FROM eventoproyectos ep
      JOIN proyectos p        ON ep.ProyectoID  = p.ProyectoID
      LEFT JOIN horariosevento h ON ep.HorarioID = h.HorarioID
      LEFT JOIN aulas a          ON h.AulaID     = a.AulaID
-     LEFT JOIN evaluadoresevento ev ON ep.EventoProyectoID = ev.EventoProyectoID
+     LEFT JOIN evaluadoresaula ev ON ev.EventoID = ep.EventoID AND ev.AulaID = h.AulaID
      LEFT JOIN usuarios u        ON ev.ProfesorID = u.UsuarioID
      WHERE ep.EventoID = ? AND ep.Estado = 'aceptado'
      GROUP BY ep.EventoProyectoID`,
@@ -749,6 +1483,87 @@ router.post("/qr/generar", async (req, res) => {
     }
 
     res.status(500).json({ message: "Error al generar QR temporal", error: err.message });
+  }
+});
+
+router.get("/profesores/:id/evaluaciones-evento", async (req, res) => {
+  try {
+    const [rows] = await dbPromise.query(
+      `SELECT
+         ea.EventoID,
+         ev.Nombre AS NombreEvento,
+         ev.Fecha AS FechaEvento,
+         ev.Estado AS EstadoEvento,
+         ev.RubricaID,
+         ea.AulaID,
+         a.Nombre AS NombreAula,
+         ep.EventoProyectoID,
+         ep.ProyectoID,
+         p.Titulo AS TituloProyecto,
+         p.Categoria,
+         p.Progreso,
+         alumno.Nombre AS NombreAlumno,
+         apoyo.Nombre AS NombreProfesorApoyo,
+         h.HorarioID,
+         h.HoraInicio,
+         h.HoraFin,
+         ee.EvalEventoID,
+         ee.PuntajeTotal,
+         ee.Fecha AS FechaEvaluacion
+       FROM evaluadoresaula ea
+       JOIN eventos ev ON ev.EventoID = ea.EventoID
+       JOIN aulas a ON a.AulaID = ea.AulaID
+       JOIN horariosevento h
+         ON h.EventoID = ea.EventoID
+        AND h.AulaID = ea.AulaID
+       JOIN eventoproyectos ep
+         ON ep.HorarioID = h.HorarioID
+        AND ep.Estado = 'aceptado'
+       JOIN proyectos p ON p.ProyectoID = ep.ProyectoID
+       JOIN usuarios alumno ON alumno.UsuarioID = p.AlumnoID
+       LEFT JOIN usuarios apoyo ON apoyo.UsuarioID = p.ProfesorID
+       LEFT JOIN evaluacionesevento ee
+         ON ee.EventoID = ea.EventoID
+        AND ee.ProyectoID = p.ProyectoID
+        AND ee.ProfesorID = ea.ProfesorID
+       WHERE ea.ProfesorID = ?
+       ORDER BY ev.Fecha DESC, a.Nombre ASC, h.HoraInicio ASC`,
+      [req.params.id]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /api/profesores/:id/evaluaciones-evento:", err);
+    res.status(500).json({ message: "Error al cargar evaluaciones del evento", error: err.message });
+  }
+});
+
+router.get("/entregas/:id/ver", async (req, res) => {
+  try {
+    const [[entrega]] = await dbPromise.query(
+      `SELECT ArchivoEntrega, ArchivoContenido, MimeType, RutaExterna
+       FROM entregas
+       WHERE EntregaID = ?
+       LIMIT 1`,
+      [req.params.id]
+    );
+
+    if (!entrega) return res.status(404).json({ message: "Entrega no encontrada" });
+
+    if (entrega.RutaExterna) {
+      return res.redirect(entrega.RutaExterna);
+    }
+
+    if (!entrega.ArchivoContenido) {
+      return res.status(404).json({ message: "La entrega no tiene archivo almacenado" });
+    }
+
+    res.setHeader("Content-Type", entrega.MimeType || "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(entrega.ArchivoEntrega || "entrega.pdf")}"`);
+    res.send(entrega.ArchivoContenido);
+  } catch (err) {
+    console.error("GET /api/entregas/:id/ver:", err);
+    res.status(500).json({ message: "Error al abrir entrega", error: err.message });
   }
 });
 
