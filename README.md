@@ -344,7 +344,7 @@ Para la entrega final se trabajo en la limpieza de estructura, revision de rutas
 | Nombre | Rol | Grupo | Carrera | Institucion |
 |---|---|---|---|---|
 | Yahir Antonio Valenzuela | Desarrollo frontend/backend, base de datos, documentacion y limpieza final del repositorio. | Grupo: Pendiente por completar | Ingenieria en Sistemas Computacionales | Tecnologico Superior de Jalisco, Unidad Academica Zapopan |
-| Michelle Ambriz | Desarrollo del proyecto, colaboracion tecnica y gestion del repositorio. | Grupo: Pendiente por completar | Ingenieria en Sistemas Computacionales | Tecnologico Superior de Jalisco, Unidad Academica Zapopan |
+| Michelle Ambriz | Desarrollo frontend/backend, colaboracion tecnica y gestion del repositorio. | Grupo: Pendiente por completar | Ingenieria en Sistemas Computacionales | Tecnologico Superior de Jalisco, Unidad Academica Zapopan |
 
 ## Estado del Proyecto
 
