@@ -6,8 +6,10 @@ router.post("/login", (req, res) => {
   const { email, password } = req.body;
 
   const query = `
-    SELECT * FROM usuarios
+    SELECT UsuarioID, Nombre, Email, Rol
+    FROM usuarios
     WHERE Email = ? AND Contraseña = ?
+    LIMIT 1
   `;
 
   db.query(query, [email, password], (err, results) => {
@@ -20,14 +22,7 @@ router.post("/login", (req, res) => {
       return res.status(401).json({ message: "Credenciales incorrectas" });
     }
 
-    const user = results[0];
-
-    res.json({
-      UsuarioID: user.UsuarioID,
-      Nombre: user.Nombre,
-      Email: user.Email,
-      Rol: user.Rol
-    });
+    res.json(results[0]);
   });
 });
 

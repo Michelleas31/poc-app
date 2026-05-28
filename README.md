@@ -1,392 +1,367 @@
-# ProjectManager — Sistema de Gestión de Proyectos de Tesis
+# ProjectManager
 
-Sistema web para la gestión integral de proyectos de tesis universitarios. Permite a administradores crear proyectos y eventos, profesores revisar y aprobar proyectos de sus alumnos, y alumnos registrar su avance, subir documentos e inscribirse a eventos de presentación.
+Sistema web para gestion academica de proyectos, eventos y evaluaciones.
 
----
+ProjectManager es un prototipo funcional desarrollado como proyecto academico para el XIX Concurso de Proyectos de Innovacion. La plataforma centraliza el registro de proyectos, la revision administrativa, la seleccion de evaluadores, la gestion de documentos, la generacion de codigos QR y la evaluacion mediante rubricas.
 
-## Stack tecnológico
+## Descripcion General
 
-| Capa | Tecnología |
-|------|-----------|
-| Backend | Node.js + Express 5 (CommonJS) |
-| Base de datos | MariaDB 11.7 |
-| ORM/Driver | mysql2 3.x (callback + promise API) |
-| Infraestructura | Docker Compose |
-| Frontend | HTML5 + CSS3 + JavaScript (vanilla, sin frameworks) |
-| Fuentes | Google Fonts (Syne + DM Sans) |
+En eventos academicos, ferias de proyectos y concursos institucionales, la informacion suele estar distribuida entre formularios, documentos, mensajes y hojas de calculo. Esto dificulta dar seguimiento al estado de cada proyecto, validar que cumpla con el tema del evento, asignar evaluadores y registrar resultados de forma ordenada.
 
----
+ProjectManager resuelve ese problema mediante una plataforma web con tres perfiles principales:
 
-## Requisitos previos
+- Alumno: registra y documenta su proyecto, se inscribe a eventos, elige evaluador cuando el flujo lo permite, genera su QR de evaluacion y consulta resultados.
+- Profesor o evaluador: ofrece disponibilidad, revisa proyectos asignados, consulta documentos, escanea o ingresa codigos QR y evalua con rubricas.
+- Administrador: gestiona usuarios, eventos, aulas, horarios, rubricas, aprobaciones, evaluadores, ranking e indicadores.
 
-- Node.js 18 o superior
-- Docker Desktop (para MariaDB en contenedor)
-- npm 9 o superior
+El sistema esta dirigido a instituciones educativas, docentes, alumnos, coordinadores de eventos academicos y comites organizadores de concursos o ferias de innovacion.
 
----
+## Objetivos
 
-## Instalación paso a paso
+### Objetivo General
 
-### 1. Clonar el repositorio
+Desarrollar una plataforma web integral que permita administrar el ciclo completo de proyectos academicos: registro, documentacion, revision, asignacion de evaluadores, evaluacion con rubrica y consulta de resultados.
 
-```bash
-git clone <url-del-repo>
-cd poc-app-michelle
-```
+### Objetivos Especificos
 
-### 2. Levantar la app con Docker
+- Digitalizar el registro de proyectos, participantes, documentos e inscripciones a eventos.
+- Facilitar la revision y aprobacion de proyectos por parte del administrador.
+- Organizar la disponibilidad de profesores y la seleccion de citas de evaluacion.
+- Generar codigos QR para identificar proyectos aprobados durante la evaluacion.
+- Permitir que los evaluadores califiquen proyectos mediante rubricas estructuradas.
+- Registrar resultados, historial de desempeno, ranking e indicadores academicos.
+- Mantener una interfaz clara para alumnos, profesores y administradores.
+- Integrar un asistente de apoyo academico para generar ideas, mejorar textos y apoyar la validacion tematica sin sustituir la decision humana.
 
-```bash
-docker compose up -d
-```
+## Tecnologias Utilizadas
 
-Esto levanta frontend, backend y MariaDB. En el primer arranque del volumen
-`mariadb_data_dev`, MariaDB carga automaticamente los scripts de `db/`.
+| Area | Tecnologia |
+|---|---|
+| Lenguajes | JavaScript, HTML5, CSS3, SQL |
+| Backend | Node.js, Express 5 |
+| Frontend | HTML, CSS y JavaScript vanilla |
+| Base de datos | MariaDB |
+| Driver de base de datos | mysql2 |
+| Infraestructura | Docker, Docker Compose, nginx |
+| Configuracion | dotenv |
+| Utilidades backend | cors, express.json |
+| Asistente IA | Servicio backend configurable con OpenRouter mediante variables de entorno |
+| Control de versiones | Git y GitHub |
 
-### 3. Verificar que el backend conecto
+## Estructura del Proyecto
 
-```bash
-docker compose logs backend
-```
-
-Debe aparecer `Conectado a MariaDB correctamente`.
-
-### 4. Instalar dependencias del backend
-
-```bash
-cd backend
-npm install
-```
-
-### 5. Iniciar el backend
-
-```bash
-npm start
-# El servidor queda en http://localhost:3000
-```
-
-### 6. Servir el frontend
-
-Usa cualquier servidor estático apuntando a `frontend/src/`. Ejemplo con live-server:
-
-```bash
-npx live-server frontend/src --port=8080 --entry-file=pages/login.html
-```
-
----
-
-## Variables de entorno
-
-Crea `backend/.env` (o ajusta `docker-compose.yml`). Todos los valores tienen fallback en `database.js`:
-
-| Variable | Default | Descripción |
-|----------|---------|-------------|
-| `DB_HOST` | `poc-mariadb` | Host de MariaDB (nombre del servicio Docker) |
-| `DB_PORT` | `3306` | Puerto de MariaDB |
-| `DB_USER` | `poc_user` | Usuario de la base de datos en Docker Compose |
-| `DB_PASSWORD` | `poc_password` | Contraseña de desarrollo en Docker Compose |
-| `DB_NAME` | `sistematesis` | Nombre de la base de datos |
-
-Para desarrollo local del backend contra MariaDB en Docker usa `DB_HOST=localhost DB_PORT=3307 DB_USER=poc_user DB_PASSWORD=poc_password`.
-
----
-
-## Estructura del proyecto
-
-```
+```text
 poc-app-michelle/
-├── backend/
-│   ├── src/
-│   │   ├── app.js                    # Entry point Express, registra rutas
-│   │   ├── routes/
-│   │   │   ├── auth.routes.js        # POST /api/login
-│   │   │   ├── index.js              # Usuarios, Eventos, Aulas, Horarios, Rúbricas, EventoProyectos
-│   │   │   ├── proyectos.routes.js   # CRUD Proyectos + Etapas + rutas de revisión
-│   │   │   └── documentos.routes.js  # Documentos (BLOB), revisión profesor, detalles
-│   │   └── services/
-│   │       └── database.js           # Conexión mysql2 con reconnect
-│   ├── package.json
-│   └── Dockerfile
-├── frontend/
-│   └── src/
-│       ├── pages/
-│       │   ├── login.html
-│       │   ├── panel-admin.html
-│       │   ├── panel-profesor.html
-│       │   └── panel-alumno.html
-│       ├── styles/
-│       │   ├── panel-admin.css
-│       │   └── panel-alumno.css
-│       ├── main.js          # Login, guarda sesión en sessionStorage
-│       ├── panel-admin.js
-│       ├── panel-profesor.js
-│       └── panel-alumno.js
-├── db/
-│   ├── database.sql                        # Esquema inicial completo
-│   └── migracion_documentos_revision.sql   # Migración v1.1.0
-├── docker-compose.yml
-└── README.md
+|-- backend/
+|   |-- Dockerfile
+|   |-- package.json
+|   |-- package-lock.json
+|   `-- src/
+|       |-- app.js
+|       |-- controllers/
+|       |-- models/
+|       |-- routes/
+|       |   |-- auth.routes.js
+|       |   |-- citas.routes.js
+|       |   |-- disponibilidad.routes.js
+|       |   |-- documentos.routes.js
+|       |   |-- evaluaciones.routes.js
+|       |   |-- ia.routes.js
+|       |   |-- index.js
+|       |   `-- proyectos.routes.js
+|       `-- services/
+|           |-- database.js
+|           `-- ia.service.js
+|-- db/
+|   |-- database.sql
+|   |-- migracion_documentos_revision.sql
+|   |-- migracion_projectmanager_uiux_flujo.sql
+|   `-- migrations/
+|       |-- 20260502_frontend_flow_fixes.sql
+|       |-- 20260507_event_aula_flow.sql
+|       |-- 20260512_asistente_ia.sql
+|       |-- 20260518_completar_schema_programa.sql
+|       |-- 20260518_estado_qr_inscripciones.sql
+|       `-- 20260518_moderadores_resultados_compat.sql
+|-- frontend/
+|   |-- Dockerfile
+|   `-- src/
+|       |-- components/
+|       |-- pages/
+|       |   |-- evaluar-qr.html
+|       |   |-- login.html
+|       |   |-- panel-admin.html
+|       |   |-- panel-alumno.html
+|       |   `-- panel-profesor.html
+|       |-- styles/
+|       |   |-- evaluar-qr.css
+|       |   |-- global.css
+|       |   |-- panel-admin.css
+|       |   |-- panel-alumno.css
+|       |   `-- panel-profesor.css
+|       |-- evaluar-qr.js
+|       |-- main.js
+|       |-- panel-admin.js
+|       |-- panel-alumno.js
+|       `-- panel-profesor.js
+|-- docker-compose.yml
+|-- .gitignore
+`-- README.md
 ```
 
----
+### Carpetas Principales
 
-## Endpoints de la API
+- `backend/`: API REST en Node.js y Express. Contiene rutas, servicios, conexion a MariaDB y logica de negocio.
+- `frontend/`: interfaz web estatica servida con nginx. Incluye las paginas de login y paneles por rol.
+- `db/`: script base de la base de datos y migraciones SQL incrementales.
+- `db/migrations/`: ajustes de compatibilidad, flujo de eventos, QR, asistente IA, moderadores y resultados.
 
-Base URL: `http://localhost:3000/api`
+## Instalacion y Configuracion
 
-### Autenticación
+### Requisitos Previos
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| POST | `/login` | Login. Body: `{Email, Contraseña}`. Devuelve datos del usuario. |
+- Git
+- Docker Desktop
+- Node.js 18 o superior
+- npm
+- MariaDB o acceso al contenedor de MariaDB definido en Docker Compose
 
-### Usuarios
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/usuarios` | Lista todos los usuarios. `?rol=Profesor` para filtrar. |
-| POST | `/usuarios` | Crear usuario. Body: `{Nombre, Email, Contraseña, Rol}` |
-| PUT | `/usuarios/:id` | Editar usuario. |
-| PUT | `/usuarios/:id/toggle` | Activar / desactivar (soft delete). |
-
-### Eventos
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/eventos` | Lista todos los eventos. |
-| POST | `/eventos` | Crear evento. Body: `{Nombre, Fecha, HoraInicio, HoraFin, Estado?}` |
-| PUT | `/eventos/:id` | Editar evento. |
-| DELETE | `/eventos/:id` | Eliminar evento. |
-
-### Aulas y Horarios
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/aulas` | Lista aulas. |
-| POST | `/aulas` | Crear aula. Body: `{Nombre, Capacidad?}` |
-| DELETE | `/aulas/:id` | Eliminar aula. |
-| GET | `/eventos/:id/horarios` | Horarios de un evento con nombre de aula. |
-| POST | `/horarios` | Crear horario. Body: `{EventoID, AulaID, HoraInicio, HoraFin}` |
-| PUT | `/horarios/:id` | Cambiar disponibilidad. Body: `{Disponible: 0|1}` |
-| DELETE | `/horarios/:id` | Eliminar horario. |
-
-### Proyectos
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/proyectos` | Lista todos los proyectos activos. |
-| GET | `/proyectos/por-alumno/:id` | Proyectos del alumno (con conteo de etapas). |
-| GET | `/proyectos/por-profesor/:id` | Proyectos asignados al profesor. |
-| GET | `/proyectos/revision/pendientes` | Proyectos pendientes de revisión (Admin). |
-| GET | `/proyectos/revision/profesor/:id` | Proyectos del profesor para revisar. |
-| GET | `/proyectos/:id` | Detalle de un proyecto. |
-| POST | `/proyectos` | Crear proyecto. Body: `{Titulo, FechaInicio, AlumnoID, ProfesorID?, Descripcion?, FechaFin?}` |
-| PUT | `/proyectos/:id` | Editar proyecto. |
-| PUT | `/proyectos/:id/asignar-profesor` | Asignar/cambiar profesor. Body: `{ProfesorID}` |
-| DELETE | `/proyectos/:id` | Soft delete (Activo = 0). |
-
-### Etapas
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/proyectos/:id/etapas` | Lista etapas ordenadas. |
-| POST | `/proyectos/:id/etapas` | Agregar etapa. Body: `{Nombre, Descripcion?, FechaFin?}` |
-| PUT | `/etapas/:id` | Actualizar etapa. Recalcula Progreso del proyecto automáticamente. |
-| DELETE | `/etapas/:id` | Eliminar etapa. Recalcula Progreso. |
-
-### Documentos del proyecto
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/proyectos/:id/documentos` | Lista documentos (sin binario). |
-| POST | `/proyectos/:id/documentos` | Subir documento como base64. Body: `{NombreArchivo, ContenidoBase64, SubidoPorID, MimeType?, Descripcion?}` |
-| GET | `/documentos/:id/ver` | Sirve el binario inline (para previsualizar en navegador). |
-| GET | `/documentos/:id/descargar` | Sirve el binario como attachment. |
-| DELETE | `/documentos/:id` | Eliminar documento. |
-| GET | `/proyectos/:id/detalles` | Proyecto + documentos + etapas en una sola respuesta. |
-| PUT | `/proyectos/:id/revisar` | Profesor registra decisión. Body: `{EstadoAprobacion, ComentarioRevision?, ProfesorID?}` |
-| GET | `/proyectos/:id/aprobacion` | Estado de aprobación del proyecto (alumno lo consulta). |
-
-### Proyectos en Eventos (inscripciones)
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/eventos/proyectos` | Lista inscripciones. `?eventoId=&estado=&proyectoId=` |
-| POST | `/eventos/proyectos` | Inscribir proyecto. Body: `{EventoID, ProyectoID, Descripcion?, Participantes[], Asesores[]}` |
-| PUT | `/eventos/proyectos/:id/estado` | Admin cambia estado. Body: `{Estado: pendiente|aceptado|rechazado}` |
-| GET | `/eventos/:id/proyectos/aceptados` | Proyectos aceptados con horario/evaluadores. |
-| POST | `/eventos/proyectos/:id/evaluadores` | Asignar evaluadores. Body: `{profesores: [UsuarioID...]}` |
-
-### Rúbricas
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | `/rubricas` | Lista rúbricas con resumen (criterios, puntaje máximo). |
-| GET | `/rubricas/:id` | Detalle completo con criterios y niveles. |
-| POST | `/rubricas` | Crear rúbrica. Body: `{Nombre, Descripcion?, ProfesorID, criterios[]}` |
-| DELETE | `/rubricas/:id` | Eliminar (bloqueado si tiene evaluaciones). |
-
----
-
-## Esquema de base de datos
-
-Tablas principales en la base de datos `sistematesis`:
-
-| Tabla | Descripción |
-|-------|-------------|
-| `Usuarios` | Alumnos, profesores y admins. Campo `Rol ENUM('Alumno','Profesor','Admin')`. |
-| `Proyectos` | Proyectos de tesis. Campos clave: `AlumnoID`, `ProfesorID`, `Progreso`, `EstadoAprobacion ENUM('pendiente','aceptado','rechazado')`. |
-| `EtapasProyecto` | Etapas de un proyecto. `Completada` recalcula `Progreso` en `Proyectos`. |
-| `ProyectoDocumentos` | Archivos subidos como `LONGBLOB`. Se crea en `migracion_documentos_revision.sql`. |
-| `Eventos` | Eventos de presentación. `Estado ENUM('proximo','activo','finalizado','no_disponible')`. |
-| `EventoProyectos` | Inscripciones de proyectos a eventos. `Estado ENUM('pendiente','aceptado','rechazado')`. |
-| `HorariosEvento` | Slots de horario por evento y aula. |
-| `Aulas` | Salas disponibles para presentaciones. |
-| `Rubricas` | Rúbricas de evaluación. Relacionada con `CriteriosRubrica` y `NivelesCriterio`. |
-| `CriteriosRubrica` | Criterios de una rúbrica (N por rúbrica). |
-| `NivelesCriterio` | 4 niveles por criterio (Sobresaliente/Bien/Suficiente/Insuficiente). |
-| `EvaluadoresEvento` | Profesores evaluadores asignados a un proyecto-evento. |
-| `ProyectoParticipantes` | Co-integrantes del proyecto (además del líder). |
-
----
-
-## Flujo de usuario por rol
-
-### Alumno
-1. Inicia sesión → panel-alumno.html
-2. Ve su proyecto asignado (metadatos, progreso, etapas).
-3. Marca etapas como completadas → el progreso se recalcula automáticamente.
-4. Sube documentos (PDF, Word, imágenes) para que su profesor los revise.
-5. Consulta el estado de aprobación del proyecto (pendiente / aceptado / rechazado) y el comentario del profesor.
-6. Se inscribe a un evento de presentación (flujo de 4 pasos: evento → participantes → documento → confirmar).
-7. Revisa el estado de sus inscripciones.
-
-### Profesor
-1. Inicia sesión → panel-profesor.html
-2. Ve todos los proyectos asignados (tarjetas con progreso y estado de aprobación).
-3. Abre el modal **Revisar** de cualquier proyecto:
-   - Consulta descripción, datos del alumno, documentos adjuntos.
-   - Escribe un comentario.
-   - Acepta o rechaza el proyecto.
-4. Navega al detalle de etapas de un proyecto.
-
-### Administrador
-1. Inicia sesión → panel-admin.html
-2. **Dashboard**: resumen de usuarios, eventos activos y proyectos pendientes.
-3. **Usuarios**: crear, editar, activar/desactivar alumnos, profesores y admins.
-4. **Eventos**: crear y gestionar eventos de presentación.
-5. **Horarios y Aulas**: definir salas y slots de tiempo.
-6. **Rúbricas**: crear rúbricas con criterios y 4 niveles de calificación.
-7. **Gestión de Proyectos**: crear proyectos, asignar alumnos y profesores, gestionar etapas, ver documentos adjuntos, subir análisis propios.
-8. **Aprobar Proyectos**: aceptar/rechazar inscripciones de proyectos a eventos.
-9. **Asignar Evaluadores**: designar hasta 3 profesores evaluadores por proyecto aceptado.
-
----
-
-## Funcionalidades por rol
-
-| Funcionalidad | Alumno | Profesor | Admin |
-|---------------|:------:|:--------:|:-----:|
-| Ver su proyecto y etapas | ✓ | — | — |
-| Marcar etapas completadas | ✓ | — | ✓ |
-| Subir documentos al proyecto | ✓ | — | ✓ |
-| Ver estado de aprobación | ✓ | — | — |
-| Inscribirse a eventos | ✓ | — | — |
-| Ver proyectos asignados | — | ✓ | — |
-| Revisar y aprobar/rechazar proyectos | — | ✓ | — |
-| Gestión completa de proyectos | — | — | ✓ |
-| Gestión de usuarios | — | — | ✓ |
-| Gestión de eventos | — | — | ✓ |
-| Aulas y horarios | — | — | ✓ |
-| Rúbricas | — | — | ✓ |
-| Aprobar inscripciones a eventos | — | — | ✓ |
-| Asignar evaluadores | — | — | ✓ |
-
----
-
-## Guía de desarrollo local
-
-### Levantar solo la base de datos
+### 1. Clonar el Repositorio
 
 ```bash
-docker compose up -d poc-mariadb
+git clone https://github.com/Michelleas31/poc-app.git
+cd poc-app
+git checkout feature/yahir-avance-limpio
 ```
 
-### Backend con recarga automática
+### 2. Configurar Variables de Entorno
+
+Crear el archivo `backend/.env` a partir de `backend/.env.example`.
 
 ```bash
 cd backend
-npm install -g nodemon   # primera vez
-nodemon src/app.js
+copy .env.example .env
+cd ..
 ```
 
-### Frontend
-
-El frontend es HTML/CSS/JS puro. Cualquier servidor estático funciona:
-
-```bash
-# Opción A — live-server
-npx live-server frontend/src --port=8080 --entry-file=pages/login.html
-
-# Opción B — Python (sin instalación)
-python -m http.server 8080 --directory frontend/src
-```
-
-### Variables para desarrollo sin Docker
+Ejemplo de configuracion para usar MariaDB local o HeidiSQL en el equipo anfitrion:
 
 ```env
-DB_HOST=localhost
+DB_HOST=host.docker.internal
 DB_PORT=3307
+DB_USER=root
+DB_PASSWORD=123
+DB_NAME=sistematesis
+
+AI_PROVIDER=openrouter
+AI_MODEL=openai/gpt-oss-20b:free
+OPENROUTER_API_KEY=
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1/chat/completions
+```
+
+La variable `OPENROUTER_API_KEY` es opcional para levantar el sistema. Si no se configura, el modulo de asistente IA mostrara un mensaje controlado y el resto del sistema continuara funcionando.
+
+### 3. Preparar la Base de Datos
+
+Opcion A: usar MariaDB local o una conexion administrada desde HeidiSQL.
+
+1. Crear una base de datos llamada `sistematesis`.
+2. Ejecutar `db/database.sql`.
+3. Ejecutar las migraciones de `db/migrations/` en orden cronologico si la base ya existia antes de la version actual.
+
+Opcion B: levantar MariaDB desde Docker Compose.
+
+```bash
+docker compose --profile docker-db up -d poc-mariadb
+```
+
+Si se usa la base de datos del servicio `poc-mariadb`, ajustar `backend/.env` para apuntar al contenedor:
+
+```env
+DB_HOST=poc-mariadb
+DB_PORT=3306
 DB_USER=poc_user
 DB_PASSWORD=poc_password
 DB_NAME=sistematesis
 ```
 
-### Usuarios de prueba (insertar manualmente)
+### 4. Ejecutar con Docker
 
-```sql
-INSERT INTO Usuarios (Nombre, Email, Contraseña, Rol) VALUES
-('Admin Sistema', 'admin@test.com',   'admin123',   'Admin'),
-('Profesor Demo', 'profe@test.com',   'profe123',   'Profesor'),
-('Alumno Demo',   'alumno@test.com',  'alumno123',  'Alumno');
+```bash
+docker compose up -d --build
 ```
 
----
+Servicios principales:
 
-## Changelog v1.1.0 — 2026-04-26
+- Frontend: `http://localhost:8080/pages/login.html`
+- Backend: `http://localhost:3000/api/health`
 
-### Correcciones de backend
+### 5. Ejecutar Backend en Desarrollo Local
 
-- **#15** Límite de `express.json` subido de 50 MB a 200 MB para soportar archivos base64 de hasta 25 MB.
-- **#15** Eliminado `router.use(express.json())` redundante en `documentos.routes.js`.
-- **#14** `PUT /proyectos/:id/revisar` verifica que el `ProfesorID` del body coincida con el asignado al proyecto.
-- **#4** Rutas `/revision/pendientes` y `/revision/profesor/:id` registradas **antes** de `/:id` en `proyectos.routes.js` para evitar colisión con Express.
-- **#2** Dependencia `dotenv` agregada a `package.json` (era requerida por `database.js` pero no estaba declarada).
-- **EXTRA20 / #5** Creada la tabla `ProyectoDocumentos` mediante `migracion_documentos_revision.sql` (con patrón idempotente). Sin esta tabla todos los endpoints de documentos fallaban con error de tabla no encontrada.
+```bash
+cd backend
+npm install
+npm start
+```
 
-### Correcciones de frontend
+El backend queda disponible en:
 
-- **#17** Extraído todo el JavaScript inline de `panel-profesor.html` a `panel-profesor.js` (nuevo archivo). Eliminadas las dos definiciones duplicadas de `revisarProyecto` y el monkey-patching de `loadMisProyectos`.
-- **#9 / EXTRA24** Eliminado bloque `DOMContentLoaded` duplicado al final de `panel-alumno.js` que registraba los mismos listeners de cierre de modal ya registrados en el bloque principal.
-- **EXTRA21** Agregado botón **Ver** en `renderGPList()` del panel admin (llamaba a `verDetallesProyecto` pero el botón nunca se renderizaba en la tabla).
-- **EXTRA22** Consolidadas las dos definiciones de `verDetallesProyecto` en `panel-admin.js` en una sola función limpia. Eliminado monkey-patching mediante reasignación de variable.
-- **EXTRA23** Integrado `gestion-proyectos` directamente en `pageTitles` y `loadSection` en `panel-admin.js`. Eliminado IIFE que parcheaba estas funciones en tiempo de ejecución.
-- Integrado badge de estado de aprobación y botón "Revisar" directamente en las tarjetas de `loadMisProyectos()` del panel profesor (eliminando dependencia de monkey-patching).
-- Integradas secciones "Estado de aprobación" y "Documentos de mi proyecto" directamente en `loadMiProyecto()` del panel alumno (eliminando monkey-patching).
+```text
+http://localhost:3000
+```
 
----
+### 6. Ejecutar Frontend en Desarrollo Local
 
-## Problemas conocidos
+El frontend no requiere instalacion de dependencias. Puede servirse desde Docker o con un servidor estatico apuntando a `frontend/src`.
 
-| ID | Descripción | Impacto | Workaround |
-|----|-------------|---------|------------|
-| #1 | `database.js` usa `mysql2.createConnection` que no reconecta automáticamente tras caída de la BD. | Si el contenedor MariaDB se reinicia, el backend requiere reinicio manual. | Reiniciar el proceso Node: `npm start`. |
-| — | Archivos se almacenan como BLOB en la BD (no en disco). | Archivos grandes (>25 MB) pueden afectar rendimiento de consultas. | Considerar migrar a almacenamiento en disco o S3 en producción. |
-| — | Sin autenticación JWT/sesiones en el backend; la sesión vive solo en `sessionStorage` del navegador. | Sin protección real de endpoints. | Aceptable para POC; agregar middleware de auth antes de producción. |
-| — | Las contraseñas se guardan en texto plano en la base de datos. | Riesgo de seguridad grave en producción. | Implementar bcrypt antes de cualquier despliegue real. |
+```bash
+npx live-server frontend/src --port=8080 --entry-file=pages/login.html
+```
 
----
+## Uso del Sistema
+
+### Acceso
+
+Abrir en el navegador:
+
+```text
+http://localhost:8080/pages/login.html
+```
+
+El login redirige al panel correspondiente segun el rol del usuario autenticado.
+
+### Roles y Funcionalidades
+
+| Rol | Funcionalidades principales |
+|---|---|
+| Administrador | Gestiona usuarios, eventos, aulas, horarios, rubricas, proyectos, aprobaciones, evaluadores, citas, moderadores, analiticas, ranking e historial de uso del asistente IA. |
+| Alumno | Registra y edita su proyecto, agrega documentos, usa el asistente IA, inscribe su proyecto a eventos, elige evaluador y cita, genera QR y consulta resultados. |
+| Profesor / Evaluador | Consulta proyectos disponibles, ofrece disponibilidad, revisa proyectos asignados, consulta documentos, escanea o ingresa QR, evalua con rubrica y revisa historial. |
+
+### Flujo Principal
+
+1. El alumno inicia sesion y registra su proyecto con titulo, descripcion, categoria y documentos.
+2. El profesor ofrece disponibilidad para apoyar o evaluar proyectos.
+3. El alumno selecciona profesor, fecha, hora y sala cuando el flujo lo permite.
+4. El administrador valida el proyecto, su categoria, documentos y cita.
+5. Si el administrador aprueba, el sistema genera o habilita el codigo QR del proyecto.
+6. El profesor escanea o ingresa el token QR el dia de la presentacion.
+7. El sistema muestra los datos del proyecto, documentos, evento, salon, horario y rubrica.
+8. El profesor evalua con rubrica y guarda la calificacion.
+9. El alumno consulta su resultado, desempeno, historial y posicion en ranking.
+
+## Modulos Principales
+
+- Autenticacion por rol.
+- Panel administrativo.
+- Panel de alumno.
+- Panel de profesor/evaluador.
+- Gestion de usuarios.
+- Gestion de eventos, aulas y horarios.
+- Registro y seguimiento de proyectos.
+- Documentos de proyecto en formato archivo o texto.
+- Inscripcion de proyectos a eventos.
+- Seleccion de evaluador y cita.
+- Aprobacion administrativa.
+- Generacion y validacion de QR.
+- Evaluacion con rubricas.
+- Ranking, podios e indicadores.
+- Asistente IA para apoyo academico y administrativo.
+
+## API Backend
+
+Base URL:
+
+```text
+http://localhost:3000/api
+```
+
+Rutas principales detectadas:
+
+| Modulo | Rutas principales |
+|---|---|
+| Autenticacion | `POST /login` |
+| Usuarios | `GET /usuarios`, `POST /usuarios`, `PUT /usuarios/:id`, `PUT /usuarios/:id/toggle` |
+| Eventos | `GET /eventos`, `POST /eventos`, `PUT /eventos/:id`, `DELETE /eventos/:id` |
+| Aulas y horarios | `GET /aulas`, `POST /aulas`, `GET /eventos/:id/horarios`, `POST /horarios` |
+| Proyectos | `GET /proyectos`, `POST /proyectos`, `GET /proyectos/:id`, `PUT /proyectos/:id`, `DELETE /proyectos/:id` |
+| Documentos | `GET /proyectos/:id/documentos`, `POST /proyectos/:id/documentos`, `POST /proyectos/:id/documentos/texto`, `GET /documentos/:id/ver`, `GET /documentos/:id/descargar` |
+| Disponibilidad | `GET /disponibilidad`, `POST /disponibilidad`, `PUT /disponibilidad/:id/seleccionar` |
+| Citas | `GET /citas`, `GET /citas/alumno/:id`, `GET /citas/profesor/:id`, `PUT /citas/:id/aprobar`, `PUT /citas/:id/rechazar` |
+| Rubricas y evaluaciones | `GET /rubricas`, `GET /rubricas/:id`, `POST /rubricas`, `POST /evaluaciones`, `GET /evaluaciones/proyecto/:id`, `GET /ranking` |
+| QR | `POST /qr/generar`, `GET /qr/:token` |
+| Asistente IA | `POST /ai`, `POST /ia/generar-ideas`, `POST /ia/mejorar-descripcion`, `POST /ia/generar-objetivos`, `POST /ia/generar-justificacion`, `POST /ia/guardar-documento`, `POST /ia/validar-evento`, `POST /ia/mejorar-rubrica`, `GET /ia/historial` |
+
+## Base de Datos
+
+La base de datos principal es `sistematesis`. El esquema base y las migraciones se encuentran en `db/`.
+
+Tablas principales:
+
+| Tabla | Proposito |
+|---|---|
+| `usuarios` | Almacena alumnos, profesores y administradores. |
+| `proyectos` | Registra los proyectos academicos y su estado. |
+| `etapasproyecto` | Define etapas internas de seguimiento. |
+| `documentos_proyecto` | Guarda documentos, archivos y textos asociados a proyectos. |
+| `eventos` | Administra concursos, ferias o eventos academicos. |
+| `horariosevento` | Define horarios y aulas para eventos. |
+| `eventoproyectos` | Relaciona proyectos inscritos con eventos y QR. |
+| `disponibilidad_profesor` | Registra disponibilidad ofrecida por profesores. |
+| `citas_evaluacion` | Controla citas de evaluacion. |
+| `rubricas` | Define rubricas de evaluacion. |
+| `criteriosrubrica` | Registra criterios de rubrica. |
+| `nivelescriterio` | Define niveles de desempeno por criterio. |
+| `evaluaciones` | Guarda evaluaciones finales. |
+| `evaluaciondetalle` | Guarda detalle de puntajes por criterio. |
+| `historial_desempeno` | Registra desempeno historico de proyectos. |
+| `ia_interacciones` | Guarda historial de interacciones del asistente IA. |
+
+## Capturas de Pantalla
+
+Las capturas deben agregarse en rutas sin espacios, acentos ni simbolos especiales. Rutas sugeridas:
+
+| Vista | Ruta sugerida |
+|---|---|
+| Login | `docs/screenshots/login.png` |
+| Panel administrador | `docs/screenshots/panel-admin.png` |
+| Panel alumno | `docs/screenshots/panel-alumno.png` |
+| Panel profesor | `docs/screenshots/panel-profesor.png` |
+| Evaluacion por QR | `docs/screenshots/evaluar-qr.png` |
+| Rubricas | `docs/screenshots/rubricas.png` |
+| Ranking | `docs/screenshots/ranking.png` |
+
+No se incluyen imagenes en este README porque el repositorio actual no contiene una carpeta `docs/screenshots/`.
+
+## Metodologia de Trabajo
+
+El proyecto fue desarrollado de forma colaborativa por modulos, separando responsabilidades de frontend, backend, base de datos, documentacion y pruebas funcionales. El control de versiones se realizo con Git y GitHub, utilizando ramas de trabajo para integrar avances sin afectar la estabilidad del proyecto principal.
+
+Para la entrega final se trabajo en la limpieza de estructura, revision de rutas, documentacion tecnica, correccion de flujo por roles y preparacion del repositorio en la rama `feature/yahir-avance-limpio`. Esta metodologia permite presentar un prototipo funcional, comprensible y mantenible para evaluacion academica.
+
+## Colaboradores
+
+| Nombre | Rol | Grupo | Carrera | Institucion |
+|---|---|---|---|---|
+| Yahir Antonio Valenzuela | Desarrollo frontend/backend, base de datos, documentacion y limpieza final del repositorio. | Grupo: Pendiente por completar | Ingenieria en Sistemas Computacionales | Tecnologico Superior de Jalisco, Unidad Academica Zapopan |
+| Michelle Ambriz | Desarrollo frontend/backend, colaboracion tecnica y gestion del repositorio. | Grupo: Pendiente por completar | Ingenieria en Sistemas Computacionales | Tecnologico Superior de Jalisco, Unidad Academica Zapopan |
+
+## Estado del Proyecto
+
+ProjectManager es un prototipo funcional y proyecto academico en fase de presentacion y mejora. El sistema cuenta con los modulos principales para demostrar el flujo completo de gestion de proyectos, eventos y evaluaciones, pero todavia puede evolucionar en seguridad, despliegue productivo, validacion avanzada y experiencia de usuario.
 
 ## Licencia
 
-Proyecto de demostración (POC). Sin licencia de distribución definida.
+Este repositorio no contiene un archivo `LICENSE`. Por lo tanto, el proyecto se presenta bajo una licencia academica y educativa de uso restringido:
+
+- Uso permitido con fines educativos, demostrativos y de evaluacion academica.
+- No se autoriza su uso comercial sin permiso de los colaboradores.
+- La reutilizacion del codigo debe citar a los autores y a la institucion cuando aplique.
+
+## Agradecimientos
+
+Se agradece al docente LEON MIGUEL RAMOS por el acompanamiento academico durante el desarrollo del proyecto.
+
+Tambien se agradece al Tecnologico Superior de Jalisco, Unidad Academica Zapopan, por el espacio de formacion y apoyo institucional.
+
+Finalmente, se reconoce al comite organizador del XIX Concurso de Proyectos de Innovacion por impulsar la participacion estudiantil, la creatividad tecnica y la presentacion de soluciones aplicadas.

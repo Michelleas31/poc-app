@@ -1,5 +1,6 @@
 const API = 'http://localhost:3000/api';
 let user = null;
+let iaRubricaMejora = null;
 
 const pageTitles = {
   dashboard: ['Dashboard', 'Resumen general del sistema'],
@@ -12,6 +13,7 @@ const pageTitles = {
   evaluadores: ['Asignar Evaluadores', 'Designa profesores por aula de evento'],
   'gestion-proyectos': ['Gestión de Proyectos', 'Crea, edita y asigna proyectos a alumnos'],
   analiticas: ['Analíticas', 'Ranking, comparativa e indicadores por evento'],
+  'ia-admin': ['Asistente IA administrativo', 'Validacion academica, rubricas e historial de uso'],
 };
 
 const ESTADOS_CITA = {
@@ -208,6 +210,22 @@ function badgeEstado(estado) {
   return `<span class="badge ${map[normalized] || 'badge-gray'}">${labels[normalized] || escapeHtml(estado || 'Sin estado')}</span>`;
 }
 
+function estadoProyectoCanonico(item = {}) {
+  const estadoInscripcion = String(item.EstadoInscripcion || item.EstadoCita || item.Estado || '').toLowerCase();
+  if (['pendiente', 'aceptado', 'rechazado'].includes(estadoInscripcion)) return estadoInscripcion;
+
+  const estadoCita = String(item.Estado || '').toLowerCase();
+  if (estadoCita === 'pendiente_admin') return 'pendiente';
+  if (estadoCita === 'aprobada') return 'aceptado';
+  if (estadoCita === 'rechazada') return 'rechazado';
+
+  const estadoProyecto = String(item.EstadoAprobacion || item.EstadoProyecto || '').toLowerCase();
+  if (estadoProyecto === 'aprobado') return 'aceptado';
+  if (['pendiente', 'aceptado', 'rechazado'].includes(estadoProyecto)) return estadoProyecto;
+
+  return 'pendiente';
+}
+
 function badgeRol(rol) {
   const m = {
     Admin: 'badge-yellow',
@@ -268,6 +286,7 @@ function loadSection(id) {
   if (id === 'evaluadores') loadEventosSelectEval();
   if (id === 'gestion-proyectos') loadGestionProyectos();
   if (id === 'analiticas') loadAnaliticas();
+  if (id === 'ia-admin') loadIaAdmin();
 }
 
 function switchTab(el, tabId) {
@@ -346,9 +365,7 @@ async function loadDashboard() {
 
     const proyectosPendientes = Array.isArray(proyectos)
       ? proyectos.filter((p) =>
-          ['pendiente', 'pendiente_admin', 'buscando_profesor', 'profesor_seleccionado'].includes(
-            String(p.Estatus || p.EstadoAprobacion || '').toLowerCase()
-          )
+          estadoProyectoCanonico(p) === 'pendiente'
         )
       : [];
 
@@ -1214,38 +1231,38 @@ async function loadProyectosEvento() {
     </tr>`;
 
   try {
-    const [proyectos, citas] = await Promise.all([
-      apiGet('/proyectos').catch(() => []),
+    const eventoFiltro = $('select-evento-proyectos')?.value || '';
+    const estadoFiltro = $('filter-estado-proyecto')?.value || '';
+    const params = new URLSearchParams();
+
+    if (eventoFiltro) params.set('eventoId', eventoFiltro);
+    if (estadoFiltro) params.set('estado', estadoFiltro);
+
+    const [inscripciones, citas] = await Promise.all([
+      apiGet(`/eventos/proyectos${params.toString() ? `?${params.toString()}` : ''}`).catch(() => []),
       apiGet('/citas').catch(() => []),
     ]);
 
-    const data = Array.isArray(proyectos) ? proyectos : [];
+    const data = Array.isArray(inscripciones) ? inscripciones : [];
     const citasArr = Array.isArray(citas) ? citas : [];
 
     if (!data.length) {
       tbody.innerHTML = `
         <tr>
           <td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted)">
-            Sin proyectos registrados
+            Sin inscripciones con esos filtros
           </td>
         </tr>`;
       return;
     }
 
-    const estadoFiltro = $('filter-estado-proyecto')?.value || '';
-
-    const filtrados = data.filter((p) => {
-      if (!estadoFiltro) return true;
-      const estado = String(p.Estatus || p.EstadoAprobacion || p.EstadoCita || '').toLowerCase();
-      return estado === estadoFiltro.toLowerCase();
-    });
-
     const pendientesAdmin = citasArr.filter((c) => String(c.Estado || '').toLowerCase() === 'pendiente_admin');
     if ($('badge-proyectos')) $('badge-proyectos').textContent = pendientesAdmin.length || '';
 
-    tbody.innerHTML = filtrados.map((p) => {
-      const cita = citasArr.find((c) => Number(c.ProyectoID) === Number(p.ProyectoID));
-      const estadoCita = cita?.Estado || p.EstadoCita || p.Estatus || p.EstadoAprobacion || 'pendiente';
+    tbody.innerHTML = data.map((p) => {
+      const cita = citasArr.find((c) => Number(c.EventoProyectoID || c.CitaID) === Number(p.EventoProyectoID));
+      const estadoReal = estadoProyectoCanonico(p);
+      const qr = p.CodigoQR || p.TokenQR || p.QRCode || cita?.CodigoQR || '';
 
       return `
         <tr>
@@ -1265,38 +1282,31 @@ async function loadProyectosEvento() {
           </td>
 
           <td>
-            ${cita
-              ? `${formatDate(cita.Fecha)}<br><span style="font-size:11px;color:var(--text-muted)">${formatTime(cita.HoraInicio)} - ${formatTime(cita.HoraFin)} · ${escapeHtml(cita.Sala || 'Sin sala')}</span>`
+            ${p.FechaEvaluacion || p.FechaEvento || p.HoraEval || p.HoraInicio
+              ? `${formatDate(p.FechaEvaluacion || p.FechaEvento)}<br><span style="font-size:11px;color:var(--text-muted)">${formatTime(p.HoraEval || p.HoraInicio)} - ${formatTime(p.HoraFinEval || p.HoraFin)} · ${escapeHtml(p.SalaEval || p.NombreAula || 'Sin sala')}</span>`
               : '<span style="color:var(--text-muted);font-size:12px">Sin cita</span>'}
           </td>
 
-          <td>${badgeEstado(estadoCita)}</td>
+          <td>${badgeEstado(estadoReal)}</td>
 
           <td>
-            ${cita?.CodigoQR
-              ? `<code style="font-size:11px;background:var(--surface2);padding:4px 6px;border-radius:6px">${escapeHtml(cita.CodigoQR)}</code>`
+            ${qr
+              ? `<code style="font-size:11px;background:var(--surface2);padding:4px 6px;border-radius:6px">${escapeHtml(qr)}</code>`
               : '<span style="color:var(--text-muted);font-size:12px">QR no generado</span>'}
           </td>
 
           <td style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="verDetallesProyecto(${p.ProyectoID})">Ver</button>
 
-            ${p.EventoProyectoID && String(estadoCita).toLowerCase() === 'pendiente'
+            ${p.EventoProyectoID && estadoReal === 'pendiente'
               ? `
                 <button class="btn btn-success btn-sm" onclick="cambiarEstadoProyecto(${p.EventoProyectoID}, 'aceptado')">Aprobar</button>
                 <button class="btn btn-danger btn-sm" onclick="rechazarInscripcion(${p.EventoProyectoID})">Rechazar</button>
               `
               : ''}
 
-            ${cita && String(cita.Estado).toLowerCase() === 'pendiente_admin'
-              ? `
-                <button class="btn btn-success btn-sm" onclick="aprobarCita(${cita.CitaID})">Aprobar cita</button>
-                <button class="btn btn-danger btn-sm" onclick="rechazarCita(${cita.CitaID})">Rechazar cita</button>
-              `
-              : ''}
-
-            ${cita && String(cita.Estado).toLowerCase() === 'aprobada'
-              ? `<button class="btn btn-ghost btn-sm" onclick="copiarQR('${escapeHtml(cita.CodigoQR)}')">Copiar QR</button>`
+            ${estadoReal === 'aceptado' && qr
+              ? `<button class="btn btn-ghost btn-sm" onclick="copiarQR('${escapeHtml(qr)}')">Copiar QR</button>`
               : ''}
           </td>
         </tr>`;
@@ -1920,8 +1930,8 @@ function renderGPStats() {
   const total = allProyectos.length;
 
   const buscando = allProyectos.filter((p) => String(p.Estatus || '').toLowerCase() === 'buscando_profesor').length;
-  const pendiente = allProyectos.filter((p) => String(p.Estatus || '').toLowerCase() === 'pendiente_admin').length;
-  const aprobado = allProyectos.filter((p) => String(p.Estatus || '').toLowerCase() === 'aprobado').length;
+  const pendiente = allProyectos.filter((p) => estadoProyectoCanonico(p) === 'pendiente').length;
+  const aprobado = allProyectos.filter((p) => estadoProyectoCanonico(p) === 'aceptado').length;
   const evaluado = allProyectos.filter((p) => String(p.Estatus || '').toLowerCase() === 'evaluado').length;
 
   box.innerHTML = [
@@ -1988,7 +1998,7 @@ function renderGPList(list) {
 
         <td>
           ${p.FechaCita
-            ? `${formatDate(p.FechaCita)} · ${formatTime(p.HoraCita)} · ${escapeHtml(p.SalaCita || 'Sin sala')}`
+            ? `${formatDate(p.FechaCita)} · ${formatTime(p.HoraCita)} · ${escapeHtml(p.SalaCita || p.Sala || 'Sin sala')}`
             : '<span style="color:var(--text-muted);font-size:12px">Sin cita</span>'}
         </td>
 
@@ -2001,7 +2011,7 @@ function renderGPList(list) {
           </div>
         </td>
 
-        <td>${badgeEstado(p.Estatus || p.EstadoAprobacion || p.EstadoCita)}</td>
+        <td>${badgeEstado(estadoProyectoCanonico(p))}</td>
 
         <td class="table-actions-cell">
           <div class="row-actions">
@@ -2608,6 +2618,214 @@ async function loadRankingEvento() {
 // LOGOUT
 // ─────────────────────────────────────────────
 
+// ASISTENTE IA ADMIN
+// -------------------------------------------------------------
+
+function trimPreview(value, max = 180) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
+async function loadIaAdmin() {
+  await Promise.all([
+    loadIaSelectEventos(),
+    loadIaSelectProyectos(),
+    loadIaSelectRubricas(),
+    loadIaHistorialAdmin(),
+  ]);
+}
+
+async function loadIaSelectEventos() {
+  const select = $('ia-admin-evento');
+  if (!select) return;
+
+  try {
+    const eventos = await apiGet('/eventos');
+    select.innerHTML = '<option value="">Seleccionar evento...</option>' +
+      (Array.isArray(eventos)
+        ? eventos.map((e) => `<option value="${e.EventoID}">${escapeHtml(e.Nombre)}</option>`).join('')
+        : '');
+  } catch (error) {
+    select.innerHTML = '<option value="">No se pudieron cargar eventos</option>';
+  }
+}
+
+async function loadIaSelectProyectos() {
+  const select = $('ia-admin-proyecto');
+  if (!select) return;
+
+  try {
+    const proyectos = await apiGet('/proyectos');
+    select.innerHTML = '<option value="">Seleccionar proyecto...</option>' +
+      (Array.isArray(proyectos)
+        ? proyectos.map((p) => `<option value="${p.ProyectoID}">${escapeHtml(p.Titulo || 'Proyecto sin titulo')}</option>`).join('')
+        : '');
+  } catch (error) {
+    select.innerHTML = '<option value="">No se pudieron cargar proyectos</option>';
+  }
+}
+
+async function loadIaSelectRubricas() {
+  const select = $('ia-admin-rubrica');
+  if (!select) return;
+
+  try {
+    const rubricas = await apiGet('/rubricas');
+    select.innerHTML = '<option value="">Seleccionar rubrica...</option>' +
+      (Array.isArray(rubricas)
+        ? rubricas.map((r) => `<option value="${r.RubricaID}">${escapeHtml(r.Nombre || 'Rubrica sin nombre')}</option>`).join('')
+        : '');
+  } catch (error) {
+    select.innerHTML = '<option value="">No se pudieron cargar rubricas</option>';
+  }
+}
+
+async function validarProyectoEventoIA() {
+  const EventoID = $('ia-admin-evento')?.value;
+  const ProyectoID = $('ia-admin-proyecto')?.value;
+  const output = $('ia-admin-validacion');
+  const btn = $('btn-ia-validar');
+
+  if (!EventoID) return toast('Selecciona un evento', 'red');
+  if (!ProyectoID) return toast('Selecciona un proyecto', 'red');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Validando...';
+  }
+  if (output) output.value = 'Validando alineacion con IA...';
+
+  try {
+    const data = await apiSend('/ia/validar-evento', 'POST', {
+      UsuarioID: user?.UsuarioID || user?.id,
+      EventoID: Number(EventoID),
+      ProyectoID: Number(ProyectoID),
+    });
+
+    if (output) output.value = data.data || '';
+    toast('Validacion IA generada');
+    loadIaHistorialAdmin();
+  } catch (error) {
+    if (output) output.value = '';
+    toast(error.message || 'Error al validar con IA', 'red');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Validar con IA';
+    }
+  }
+}
+
+async function mejorarRubricaIA() {
+  const RubricaID = $('ia-admin-rubrica')?.value;
+  const instrucciones = $('ia-admin-rubrica-input')?.value.trim() || '';
+  const preview = $('ia-admin-rubrica-preview');
+  const btn = $('btn-ia-rubrica');
+  const btnAplicar = $('btn-ia-aplicar-rubrica');
+
+  if (!RubricaID) return toast('Selecciona una rubrica', 'red');
+
+  iaRubricaMejora = null;
+  if (btnAplicar) btnAplicar.disabled = true;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Mejorando...';
+  }
+  if (preview) preview.value = 'Generando mejora de rubrica...';
+
+  try {
+    const data = await apiSend('/ia/mejorar-rubrica', 'POST', {
+      UsuarioID: user?.UsuarioID || user?.id,
+      RubricaID: Number(RubricaID),
+      Texto: instrucciones,
+    });
+
+    const payload = data.data || {};
+    iaRubricaMejora = payload.estructura
+      ? { RubricaID: Number(RubricaID), estructura: payload.estructura }
+      : null;
+
+    if (preview) preview.value = payload.texto || data.data || '';
+    if (btnAplicar) btnAplicar.disabled = !iaRubricaMejora;
+    toast('Mejora IA generada');
+    loadIaHistorialAdmin();
+  } catch (error) {
+    if (preview) preview.value = '';
+    toast(error.message || 'Error al mejorar rubrica', 'red');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Mejorar con IA';
+    }
+  }
+}
+
+async function aplicarRubricaIA() {
+  if (!iaRubricaMejora) return toast('Primero genera una mejora estructurada', 'red');
+
+  const btn = $('btn-ia-aplicar-rubrica');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Aplicando...';
+  }
+
+  try {
+    await apiSend('/ia/mejorar-rubrica', 'POST', {
+      UsuarioID: user?.UsuarioID || user?.id,
+      RubricaID: iaRubricaMejora.RubricaID,
+      aplicar: true,
+      estructura: iaRubricaMejora.estructura,
+    });
+
+    toast('Mejora aplicada a la rubrica');
+    iaRubricaMejora = null;
+    if ($('ia-admin-rubrica-preview')) $('ia-admin-rubrica-preview').value = '';
+    loadRubricas();
+    loadIaHistorialAdmin();
+  } catch (error) {
+    toast(error.message || 'Error al aplicar mejora', 'red');
+  } finally {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Aplicar mejora';
+    }
+  }
+}
+
+async function loadIaHistorialAdmin() {
+  const tbody = $('ia-admin-historial');
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">Cargando historial...</td></tr>';
+
+  try {
+    const data = await apiGet('/ia/historial?limit=80');
+    const rows = Array.isArray(data.data) ? data.data : [];
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">Aun no hay uso registrado de IA.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map((item) => `
+      <tr>
+        <td>${formatDateTime(item.CreatedAt)}</td>
+        <td>${escapeHtml(item.NombreUsuario || 'Usuario')}</td>
+        <td>${badgeRol(item.Rol)}</td>
+        <td>${escapeHtml(item.TituloProyecto || 'Sin proyecto')}</td>
+        <td><span class="badge badge-blue">${escapeHtml(item.Tipo)}</span></td>
+        <td class="ai-history-text">${escapeHtml(trimPreview(item.Entrada))}</td>
+        <td class="ai-history-text">${escapeHtml(trimPreview(item.Respuesta))}</td>
+        <td>${escapeHtml(item.ModeloUsado || '-')}</td>
+        <td>${escapeHtml(item.Proveedor || '-')}</td>
+      </tr>
+    `).join('');
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);padding:16px">Error al cargar historial IA</td></tr>`;
+  }
+}
+
 function logout() {
   sessionStorage.removeItem('user');
   localStorage.removeItem('user');
@@ -2637,6 +2855,9 @@ Object.assign(window, {
   editUsuario,
   filterGP,
   filterUsuarios,
+  aplicarRubricaIA,
+  loadIaAdmin,
+  loadIaHistorialAdmin,
   loadAulasEval,
   loadCitasAdmin,
   loadHorarios,
@@ -2650,6 +2871,7 @@ Object.assign(window, {
   openNewUsuario,
   rechazarCita,
   rechazarInscripcion,
+  mejorarRubricaIA,
   removeCriterio,
   renderGP,
   safeJsonForOnclick,
@@ -2668,5 +2890,6 @@ Object.assign(window, {
   updateCriterioField,
   updateModeradorAdmin,
   updateNivelField,
+  validarProyectoEventoIA,
   verDetallesProyecto,
 });

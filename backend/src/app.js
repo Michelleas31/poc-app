@@ -10,6 +10,7 @@ const disponibilidadRoutes = require('./routes/disponibilidad.routes');
 const documentosRoutes = require('./routes/documentos.routes');
 const evaluacionesRoutes = require('./routes/evaluaciones.routes');
 const citasRoutes = require('./routes/citas.routes');
+const iaRoutes = require('./routes/ia.routes');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api', disponibilidadRoutes);
 app.use('/api', documentosRoutes);
 app.use('/api', evaluacionesRoutes);
 app.use('/api', citasRoutes);
+app.use('/api', iaRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Ruta no encontrada', path: req.originalUrl });
