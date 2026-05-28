@@ -1476,26 +1476,27 @@ async function revisarProyecto(proyectoId) {
           ${docs.length === 0
             ? '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;color:var(--text-muted)">El alumno no adjuntó documentos.</div>'
             : docs.map(d => `
-              <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:6px">
-                <div style="width:32px;height:32px;border-radius:6px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:white;flex-shrink:0">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14,2 14,8 20,8"/>
-                  </svg>
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:linear-gradient(135deg,rgba(78,124,255,.10),rgba(34,197,160,.06));border:1px solid rgba(148,163,184,.16);border-radius:12px;margin-bottom:10px">
+                <div style="width:40px;height:40px;border-radius:10px;background:${d.Tipo === 'texto' ? 'rgba(34,197,160,.18)' : 'rgba(78,124,255,.18)'};display:flex;align-items:center;justify-content:center;color:${d.Tipo === 'texto' ? 'var(--green)' : 'var(--blue)'};font-size:11px;font-weight:800;flex-shrink:0">
+                  ${d.Tipo === 'texto' ? 'TXT' : 'PDF'}
                 </div>
-
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                    ${escapeHTML(d.NombreArchivo || d.Nombre || 'Documento')}
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+                    <div style="font-size:14px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                      ${escapeHTML(d.Titulo || d.NombreArchivo || d.Nombre || 'Documento')}
+                    </div>
+                    ${d.Tipo === 'texto' ? '<span class="badge badge-green">Lectura IA</span>' : ''}
                   </div>
 
-                  <div style="font-size:11px;color:var(--text-muted)">
+                  <div style="font-size:12px;color:var(--text-muted);line-height:1.45">
                     ${formatBytes(d.TamanoBytes || d.Tamano || 0)} · ${safeDateTime(d.CreatedAt || d.FechaSubida)}
                   </div>
                 </div>
 
-                <a href="${API}/documentos/${d.DocumentoID}/ver" target="_blank" class="btn btn-ghost btn-sm">Ver</a>
-                <a href="${API}/documentos/${d.DocumentoID}/descargar" class="btn btn-primary btn-sm">Descargar</a>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                  <a href="${API}/documentos/${d.DocumentoID}/ver" target="_blank" class="btn btn-primary btn-sm">Ver lectura</a>
+                  <a href="${API}/documentos/${d.DocumentoID}/descargar" class="btn btn-ghost btn-sm">Descargar</a>
+                </div>
               </div>`).join('')
           }
         </div>

@@ -17,6 +17,62 @@ function obtenerEntero(valor, fallback = null) {
   return Number.isInteger(numero) ? numero : fallback;
 }
 
+const ESTADOS_INSCRIPCION = ["pendiente", "aceptado", "rechazado"];
+
+function normalizarEstadoInscripcion(estado) {
+  const valor = normalizarTexto(estado).toLowerCase();
+  if (valor === "aprobado" || valor === "aprobada") return "aceptado";
+  if (valor === "rechazada") return "rechazado";
+  return ESTADOS_INSCRIPCION.includes(valor) ? valor : null;
+}
+
+function generarTokenQR() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+async function recalcularEstadoProyectoPorInscripciones(proyectoId, conn = dbPromise) {
+  const [[estado]] = await conn.query(
+    `SELECT
+       CASE
+         WHEN SUM(CASE WHEN Estado = 'aceptado' THEN 1 ELSE 0 END) > 0 THEN 'aceptado'
+         WHEN SUM(CASE WHEN Estado = 'pendiente' THEN 1 ELSE 0 END) > 0 THEN 'pendiente'
+         WHEN SUM(CASE WHEN Estado = 'rechazado' THEN 1 ELSE 0 END) > 0 THEN 'rechazado'
+         ELSE 'pendiente'
+       END AS EstadoAprobacion,
+       (
+         SELECT ep2.ProfesorID
+         FROM eventoproyectos ep2
+         WHERE ep2.ProyectoID = ?
+           AND ep2.Estado = 'aceptado'
+           AND ep2.ProfesorID IS NOT NULL
+         ORDER BY ep2.FechaRevision DESC, ep2.CreatedAt DESC, ep2.EventoProyectoID DESC
+         LIMIT 1
+       ) AS ProfesorAceptadoID
+     FROM eventoproyectos
+     WHERE ProyectoID = ?`,
+    [proyectoId, proyectoId]
+  );
+
+  const estadoFinal = estado?.EstadoAprobacion || "pendiente";
+  const estatus = {
+    aceptado: "aprobado",
+    pendiente: "Pendiente de aprobación admin",
+    rechazado: "rechazado",
+  }[estadoFinal];
+
+  await conn.query(
+    `UPDATE proyectos
+     SET EstadoAprobacion = ?,
+         Estatus = ?,
+         ProfesorID = COALESCE(?, ProfesorID),
+         FechaRevision = CASE WHEN ? <> 'pendiente' THEN NOW() ELSE FechaRevision END
+     WHERE ProyectoID = ?`,
+    [estadoFinal, estatus, estado?.ProfesorAceptadoID || null, estadoFinal, proyectoId]
+  );
+
+  return estadoFinal;
+}
+
 function validarRubricaPayload(body = {}) {
   const Nombre = normalizarTexto(body.Nombre || body.nombre);
   const Descripcion = normalizarTexto(body.Descripcion || body.descripcion) || null;
@@ -92,12 +148,13 @@ async function calcularResultadosEvento(eventoId) {
     eventoId,
     row.ProyectoID,
     row.PromedioFinal,
+    row.PromedioFinal,
     index + 1,
   ]);
 
   await dbPromise.query(
     `INSERT INTO resultadosevento
-       (EventoID, ProyectoID, PromedioFinal, Posicion)
+       (EventoID, ProyectoID, PuntajeTotal, Porcentaje, Posicion)
      VALUES ?`,
     [valores]
   );
@@ -122,7 +179,7 @@ async function obtenerPodio(eventoId = null) {
        ev.Fecha AS FechaEvento,
        r.ProyectoID,
        p.Titulo,
-       r.PromedioFinal,
+       COALESCE(r.Porcentaje, r.PuntajeTotal, 0) AS PromedioFinal,
        r.Posicion,
        al.Nombre AS NombreAlumno,
        COALESCE((
@@ -133,9 +190,9 @@ async function obtenerPodio(eventoId = null) {
        ), al.Nombre) AS Integrantes,
        apoyo.Nombre AS NombreProfesorApoyo,
        entrega.EntregaID,
-       entrega.ArchivoEntrega,
+       NULL AS ArchivoEntrega,
        entrega.MimeType,
-       entrega.RutaExterna
+       NULL AS RutaExterna
      FROM resultadosevento r
      JOIN eventos ev ON ev.EventoID = r.EventoID
      JOIN proyectos p ON p.ProyectoID = r.ProyectoID
@@ -372,10 +429,10 @@ router.get("/eventos/:id/ranking", async (req, res) => {
          u.Nombre AS NombreAlumno,
          ep.Estado AS EstadoInscripcion,
          r.Posicion,
-         r.PromedioFinal AS Promedio,
-         r.PromedioFinal AS PuntajeTotal,
-         r.PromedioFinal AS MejorPuntaje,
-         COUNT(DISTINCT ee.EvalEventoID) AS TotalEvaluaciones
+         COALESCE(r.Porcentaje, r.PuntajeTotal, 0) AS Promedio,
+         COALESCE(r.PuntajeTotal, r.Porcentaje, 0) AS PuntajeTotal,
+         COALESCE(r.Porcentaje, r.PuntajeTotal, 0) AS MejorPuntaje,
+         COUNT(DISTINCT ee.EvaluacionEventoID) AS TotalEvaluaciones
        FROM resultadosevento r
        JOIN proyectos p ON p.ProyectoID = r.ProyectoID
        JOIN usuarios u ON u.UsuarioID = p.AlumnoID
@@ -893,12 +950,13 @@ router.get("/moderadores-aula", async (req, res) => {
     const [rows] = await dbPromise.query(
       `SELECT
          ma.*,
+         ma.ModeradorAulaID AS ModeradorID,
          ev.Nombre AS NombreEvento,
          ev.Fecha AS FechaEvento,
          a.Nombre AS NombreAula,
          alumno.Nombre AS NombreAlumno,
          alumno.Email AS EmailAlumno,
-         alumno.Semestre
+         NULL AS Semestre
        FROM moderadoresaula ma
        JOIN eventos ev ON ev.EventoID = ma.EventoID
        JOIN aulas a ON a.AulaID = ma.AulaID
@@ -926,16 +984,12 @@ router.post("/moderadores-aula", async (req, res) => {
 
   try {
     const [[alumno]] = await dbPromise.query(
-      "SELECT UsuarioID, Rol, Semestre FROM usuarios WHERE UsuarioID = ? LIMIT 1",
+      "SELECT UsuarioID, Rol FROM usuarios WHERE UsuarioID = ? LIMIT 1",
       [alumnoId]
     );
 
     if (!alumno || alumno.Rol !== "Alumno") {
       return res.status(403).json({ message: "Solo alumnos pueden postularse como moderadores" });
-    }
-
-    if (alumno.Semestre && Number(alumno.Semestre) > 2) {
-      return res.status(403).json({ message: "Solo alumnos de primero o segundo semestre pueden postularse" });
     }
 
     const [[eventoAula]] = await dbPromise.query(
@@ -954,7 +1008,7 @@ router.post("/moderadores-aula", async (req, res) => {
     }
 
     const [[moderadorAceptado]] = await dbPromise.query(
-      `SELECT ModeradorID
+      `SELECT ModeradorAulaID AS ModeradorID
        FROM moderadoresaula
        WHERE EventoID = ?
          AND AulaID = ?
@@ -969,9 +1023,9 @@ router.post("/moderadores-aula", async (req, res) => {
 
     const [result] = await dbPromise.query(
       `INSERT INTO moderadoresaula
-         (EventoID, AulaID, AlumnoID, Estado)
-       VALUES (?, ?, ?, 'pendiente')`,
-      [eventoId, aulaId, alumnoId]
+         (EventoID, AulaID, AlumnoID, ProfesorID, Estado)
+       VALUES (?, ?, ?, ?, 'pendiente')`,
+      [eventoId, aulaId, alumnoId, alumnoId]
     );
 
     res.status(201).json({
@@ -989,7 +1043,7 @@ router.post("/moderadores-aula", async (req, res) => {
 });
 
 router.put("/moderadores-aula/:id/estado", async (req, res) => {
-  const { Estado } = req.body;
+  const Estado = normalizarEstadoInscripcion(req.body.Estado);
 
   if (!["pendiente", "aceptado", "rechazado"].includes(Estado)) {
     return res.status(400).json({ message: "Estado invalido" });
@@ -1003,7 +1057,7 @@ router.put("/moderadores-aula/:id/estado", async (req, res) => {
     const [[postulacion]] = await conn.query(
       `SELECT *
        FROM moderadoresaula
-       WHERE ModeradorID = ?
+       WHERE ModeradorAulaID = ?
        LIMIT 1
        FOR UPDATE`,
       [req.params.id]
@@ -1016,15 +1070,15 @@ router.put("/moderadores-aula/:id/estado", async (req, res) => {
 
     if (Estado === "aceptado") {
       const [[actual]] = await conn.query(
-        `SELECT ModeradorID
+        `SELECT ModeradorAulaID AS ModeradorID
          FROM moderadoresaula
          WHERE EventoID = ?
            AND AulaID = ?
            AND Estado = 'aceptado'
-           AND ModeradorID <> ?
+           AND ModeradorAulaID <> ?
          LIMIT 1
          FOR UPDATE`,
-        [postulacion.EventoID, postulacion.AulaID, postulacion.ModeradorID]
+        [postulacion.EventoID, postulacion.AulaID, postulacion.ModeradorAulaID]
       );
 
       if (actual) {
@@ -1034,7 +1088,7 @@ router.put("/moderadores-aula/:id/estado", async (req, res) => {
     }
 
     await conn.query(
-      "UPDATE moderadoresaula SET Estado = ? WHERE ModeradorID = ?",
+      "UPDATE moderadoresaula SET Estado = ? WHERE ModeradorAulaID = ?",
       [Estado, req.params.id]
     );
 
@@ -1198,30 +1252,38 @@ router.delete("/rubricas/:id", async (req, res) => {
 
 router.get("/eventos/proyectos", (req, res) => {
   const { eventoId, estado, proyectoId } = req.query;
+  const estadoNormalizado = estado ? normalizarEstadoInscripcion(estado) : null;
+
+  if (estado && !estadoNormalizado) {
+    return res.status(400).json({ message: "Estado inválido" });
+  }
+
   let query = `
     SELECT ep.EventoProyectoID, ep.EventoID, ep.Estado, ep.CreatedAt, ep.HorarioID,
            ep.QRCode, ep.TokenQR,
+           COALESCE(ep.TokenQR, ep.QRCode) AS CodigoQR,
            ep.FechaEvaluacion, ep.HoraInicio AS HoraEval, ep.HoraFin AS HoraFinEval,
            ep.Sala AS SalaEval, ep.ComentarioAdmin,
-           p.Titulo AS TituloProyecto, p.ProyectoID,
-           e.Nombre AS NombreEvento, e.Fecha AS FechaEvento,
+           p.Titulo AS TituloProyecto, p.ProyectoID, p.EstadoAprobacion AS EstadoProyecto,
+           e.Nombre AS NombreEvento, e.Fecha AS FechaEvento, e.Estado AS EstadoEvento,
            u.Nombre AS NombreAlumno,
+           pr.Nombre AS NombreProfesor,
            a.Nombre AS NombreAula, h.HoraInicio, h.HoraFin,
-           GROUP_CONCAT(DISTINCT ev_u.Nombre ORDER BY ev_u.Nombre SEPARATOR ', ') AS Evaluadores
+           ev_u.Nombre AS Evaluadores
     FROM eventoproyectos ep
     JOIN proyectos p        ON ep.ProyectoID = p.ProyectoID
     JOIN eventos e          ON ep.EventoID   = e.EventoID
     JOIN usuarios u         ON p.AlumnoID    = u.UsuarioID
+    LEFT JOIN usuarios pr   ON pr.UsuarioID = COALESCE(ep.ProfesorID, p.ProfesorID)
     LEFT JOIN horariosevento h  ON ep.HorarioID  = h.HorarioID
     LEFT JOIN aulas a           ON h.AulaID       = a.AulaID
-    LEFT JOIN evaluadoresaula ea    ON ea.EventoID = ep.EventoID AND ea.AulaID = h.AulaID
-    LEFT JOIN usuarios ev_u         ON ea.ProfesorID = ev_u.UsuarioID
+    LEFT JOIN usuarios ev_u         ON ev_u.UsuarioID = ep.ProfesorID
     WHERE 1=1`;
   const params = [];
   if (eventoId)   { query += " AND ep.EventoID   = ?"; params.push(eventoId); }
-  if (estado)     { query += " AND ep.Estado      = ?"; params.push(estado); }
+  if (estadoNormalizado) { query += " AND ep.Estado = ?"; params.push(estadoNormalizado); }
   if (proyectoId) { query += " AND ep.ProyectoID  = ?"; params.push(proyectoId); }
-  query += " GROUP BY ep.EventoProyectoID ORDER BY ep.CreatedAt DESC";
+  query += " ORDER BY FIELD(ep.Estado, 'aceptado', 'pendiente', 'rechazado'), ep.FechaRevision DESC, ep.CreatedAt DESC, ep.EventoProyectoID DESC";
 
   db.query(query, params, (err, results) => {
     if (err) return res.status(500).json(err);
@@ -1233,26 +1295,34 @@ router.get("/eventos/proyectos", (req, res) => {
 // PUT /api/eventos/proyectos/:id/estado
 
 router.put("/eventos/proyectos/:id/estado", async (req, res) => {
-  const { Estado } = req.body;
-  if (!["pendiente", "aceptado", "rechazado"].includes(Estado))
+  const Estado = normalizarEstadoInscripcion(req.body.Estado);
+  if (!Estado)
     return res.status(400).json({ message: "Estado inválido" });
 
+  const conn = dbPromise;
+
   try {
+    await conn.beginTransaction();
+
+    const [[ep]] = await conn.query(
+      `SELECT EventoProyectoID, ProyectoID, Estado, QRCode, TokenQR
+       FROM eventoproyectos
+       WHERE EventoProyectoID = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [req.params.id]
+    );
+
+    if (!ep) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Inscripción no encontrada" });
+    }
+
     if (Estado === "aceptado") {
-      // Obtener QRCode existente para no regenerarlo
-      const [[ep]] = await dbPromise.query(
-        "SELECT EventoProyectoID, QRCode, TokenQR FROM eventoproyectos WHERE EventoProyectoID = ?",
-        [req.params.id]
-      );
+      const tokenExistente = ep.TokenQR || ep.QRCode || "";
+      const qrToken = /^[a-f0-9]{32}$/i.test(tokenExistente) ? tokenExistente : generarTokenQR();
 
-      if (!ep) {
-        return res.status(404).json({ message: "EventoProyecto no encontrado" });
-      }
-
-      // Generar QR token si aún no existe — el alumno lo mostrará el día de la exposición
-      const qrToken = ep.QRCode || crypto.randomBytes(16).toString("hex");
-
-      await dbPromise.query(
+      await conn.query(
         `UPDATE eventoproyectos
          SET Estado = ?,
              QRCode = ?,
@@ -1262,15 +1332,12 @@ router.put("/eventos/proyectos/:id/estado", async (req, res) => {
         [Estado, qrToken, qrToken, req.params.id]
       );
 
-      // Sync project approval status so alumno sees "Aprobado" immediately
-      await dbPromise.query(
-        `UPDATE proyectos SET EstadoAprobacion = 'aceptado'
-         WHERE ProyectoID = (SELECT ProyectoID FROM eventoproyectos WHERE EventoProyectoID = ?)`,
-        [req.params.id]
-      );
+      await recalcularEstadoProyectoPorInscripciones(ep.ProyectoID, conn);
+      await conn.commit();
 
       return res.json({
-        message: "Inscripción aceptada. QR generado — el alumno ya puede verlo.",
+        message: "Inscripción aceptada. QR generado.",
+        Estado,
         QRCode: qrToken,
         TokenQR: qrToken
       });
@@ -1280,38 +1347,44 @@ router.put("/eventos/proyectos/:id/estado", async (req, res) => {
     if (Estado === "rechazado") {
       const { ComentarioAdmin } = req.body;
 
-      await dbPromise.query(
+      await conn.query(
         `UPDATE eventoproyectos
          SET Estado = ?,
              ComentarioAdmin = ?,
+             QRCode = NULL,
+             TokenQR = NULL,
              FechaRevision = NOW()
          WHERE EventoProyectoID = ?`,
         [Estado, ComentarioAdmin || null, req.params.id]
       );
 
-      await dbPromise.query(
-        `UPDATE proyectos SET EstadoAprobacion = 'rechazado'
-         WHERE ProyectoID = (SELECT ProyectoID FROM eventoproyectos WHERE EventoProyectoID = ?)`,
-        [req.params.id]
-      );
+      await recalcularEstadoProyectoPorInscripciones(ep.ProyectoID, conn);
+      await conn.commit();
 
       return res.json({
         message: "Proyecto rechazado",
+        Estado,
         comentario: ComentarioAdmin || null
       });
     }
 
     // Estado pendiente o cualquier otro
-    await dbPromise.query(
+    await conn.query(
       `UPDATE eventoproyectos 
        SET Estado = ?,
+           QRCode = NULL,
+           TokenQR = NULL,
            FechaRevision = NOW()
        WHERE EventoProyectoID = ?`,
       [Estado, req.params.id]
     );
 
-    res.json({ message: "Estado actualizado" });
+    await recalcularEstadoProyectoPorInscripciones(ep.ProyectoID, conn);
+    await conn.commit();
+
+    res.json({ message: "Estado actualizado", Estado });
   } catch (err) {
+    try { await conn.rollback(); } catch (_) {}
     console.error("Error PUT /eventos/proyectos/:id/estado:", err);
     res.status(500).json({ message: "Error al actualizar estado", error: err.message });
   }
@@ -1359,37 +1432,106 @@ router.post("/eventos/proyectos", async (req, res) => {
   if (!EventoID || !ProyectoID)
     return res.status(400).json({ message: "EventoID y ProyectoID son obligatorios" });
 
+  const conn = dbPromise;
+
   try {
-    const [existente] = await dbPromise.query(
-      "SELECT EventoProyectoID FROM eventoproyectos WHERE EventoID = ? AND ProyectoID = ?",
+    await conn.beginTransaction();
+
+    const [[proyecto]] = await conn.query(
+      `SELECT ProyectoID, Activo
+       FROM proyectos
+       WHERE ProyectoID = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [ProyectoID]
+    );
+
+    if (!proyecto || Number(proyecto.Activo) !== 1) {
+      await conn.rollback();
+      return res.status(404).json({ message: "Proyecto no encontrado o inactivo" });
+    }
+
+    const [[evento]] = await conn.query(
+      `SELECT EventoID, Estado
+       FROM eventos
+       WHERE EventoID = ?
+       LIMIT 1`,
+      [EventoID]
+    );
+
+    if (!evento || !["proximo", "activo"].includes(evento.Estado)) {
+      await conn.rollback();
+      return res.status(409).json({ message: "El evento no está disponible para inscripciones" });
+    }
+
+    const [activa] = await conn.query(
+      `SELECT EventoProyectoID, EventoID, Estado
+       FROM eventoproyectos
+       WHERE ProyectoID = ?
+         AND Estado IN ('pendiente', 'aceptado')
+       LIMIT 1
+       FOR UPDATE`,
+      [ProyectoID]
+    );
+
+    if (activa.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({
+        message: "Este proyecto ya tiene una inscripción activa. No puede inscribirse a otro evento hasta cerrar la anterior.",
+        EventoProyectoID: activa[0].EventoProyectoID,
+        EventoID: activa[0].EventoID,
+        Estado: activa[0].Estado,
+      });
+    }
+
+    const [existente] = await conn.query(
+      `SELECT EventoProyectoID, Estado
+       FROM eventoproyectos
+       WHERE EventoID = ? AND ProyectoID = ?
+       LIMIT 1
+       FOR UPDATE`,
       [EventoID, ProyectoID]
     );
-    if (existente.length > 0)
-      return res.status(409).json({ message: "Este proyecto ya está inscrito en el evento" });
+    if (existente.length > 0) {
+      await conn.rollback();
+      return res.status(409).json({
+        message: "Este proyecto ya está inscrito en el evento",
+        EventoProyectoID: existente[0].EventoProyectoID,
+        Estado: existente[0].Estado,
+      });
+    }
 
-    const [result] = await dbPromise.query(
-      `INSERT INTO eventoproyectos (EventoID, ProyectoID, Estado, QRCode) VALUES (?, ?, 'pendiente', NULL)`,
+    const [result] = await conn.query(
+      `INSERT INTO eventoproyectos (EventoID, ProyectoID, Estado, QRCode, TokenQR)
+       VALUES (?, ?, 'pendiente', NULL, NULL)`,
       [EventoID, ProyectoID]
     );
     const eventoProyectoId = result.insertId;
 
     if (Descripcion) {
-      await dbPromise.query("UPDATE proyectos SET Descripcion = ? WHERE ProyectoID = ?", [Descripcion, ProyectoID]);
+      await conn.query("UPDATE proyectos SET Descripcion = ? WHERE ProyectoID = ?", [Descripcion, ProyectoID]);
     }
 
     if (Array.isArray(Participantes) && Participantes.length) {
-      await dbPromise.query("DELETE FROM proyectoparticipantes WHERE ProyectoID = ?", [ProyectoID]);
+      await conn.query("DELETE FROM proyectoparticipantes WHERE ProyectoID = ?", [ProyectoID]);
       const valores = Participantes.map(p => [ProyectoID, p.id]);
-      await dbPromise.query("INSERT INTO proyectoparticipantes (ProyectoID, UsuarioID) VALUES ?", [valores]);
+      await conn.query("INSERT INTO proyectoparticipantes (ProyectoID, UsuarioID) VALUES ?", [valores]);
     }
+
+    await recalcularEstadoProyectoPorInscripciones(ProyectoID, conn);
+    await conn.commit();
 
     res.status(201).json({
       message: "Inscripción enviada. El administrador la revisará pronto.",
       EventoProyectoID: eventoProyectoId
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json(err);
+    try { await conn.rollback(); } catch (_) {}
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ message: "Este proyecto ya está inscrito en el evento" });
+    }
+    console.error("POST /api/eventos/proyectos:", err);
+    res.status(500).json({ message: "Error al inscribir proyecto", error: err.message });
   }
 });
 
@@ -1417,6 +1559,7 @@ router.post("/qr/generar", async (req, res) => {
 
     const [[inscripcion]] = await dbPromise.query(
       `SELECT ep.EventoProyectoID, ep.EventoID, ep.ProyectoID, ep.Estado,
+              ep.QRCode, ep.TokenQR,
               p.AlumnoID, p.Titulo,
               ev.Nombre AS NombreEvento
        FROM eventoproyectos ep
@@ -1437,50 +1580,31 @@ router.post("/qr/generar", async (req, res) => {
       });
     }
 
-    const [[limite]] = await dbPromise.query(
-      `SELECT COUNT(*) AS Total
-       FROM qr_sessions
-       WHERE ProyectoID = ?
-         AND AlumnoID = ?
-         AND CreatedAt >= CURDATE()`,
-      [ProyectoID, AlumnoID]
-    );
-
-    if (Number(limite?.Total || 0) >= 5) {
-      return res.status(429).json({
-        message: "Ya generaste 5 QR hoy. Usa el ultimo token activo o pide apoyo al administrador."
-      });
-    }
-
-    const token = crypto.randomBytes(16).toString("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const tokenExistente = inscripcion.TokenQR || inscripcion.QRCode || "";
+    const token = /^[a-f0-9]{32}$/i.test(tokenExistente)
+      ? tokenExistente
+      : generarTokenQR();
 
     await dbPromise.query(
-      `INSERT INTO qr_sessions
-        (Token, ProyectoID, EventoProyectoID, AlumnoID, ExpiresAt)
-       VALUES (?, ?, ?, ?, ?)`,
-      [token, ProyectoID, inscripcion.EventoProyectoID, AlumnoID, expiresAt]
+      `UPDATE eventoproyectos
+       SET QRCode = ?, TokenQR = ?
+       WHERE EventoProyectoID = ?`,
+      [token, token, inscripcion.EventoProyectoID]
     );
 
     res.status(201).json({
       token,
-      expiresAt,
+      expiresAt: null,
       proyecto: {
         ProyectoID,
         Titulo: inscripcion.Titulo,
         EventoProyectoID: inscripcion.EventoProyectoID,
         NombreEvento: inscripcion.NombreEvento,
       },
-      evaluacionUrl: `/src/pages/evaluar-qr.html?token=${encodeURIComponent(token)}`
+      evaluacionUrl: `/pages/evaluar-qr.html?token=${encodeURIComponent(token)}`
     });
   } catch (err) {
     console.error("POST /api/qr/generar:", err);
-
-    if (err?.code === "ER_NO_SUCH_TABLE") {
-      return res.status(500).json({
-        message: "Falta la tabla qr_sessions. Ejecuta la migracion db/migrations/20260502_frontend_flow_fixes.sql"
-      });
-    }
 
     res.status(500).json({ message: "Error al generar QR temporal", error: err.message });
   }
@@ -1507,9 +1631,9 @@ router.get("/profesores/:id/evaluaciones-evento", async (req, res) => {
          h.HorarioID,
          h.HoraInicio,
          h.HoraFin,
-         ee.EvalEventoID,
+         ee.EvaluacionEventoID AS EvalEventoID,
          ee.PuntajeTotal,
-         ee.Fecha AS FechaEvaluacion
+         ee.FechaEvaluacion
        FROM evaluadoresaula ea
        JOIN eventos ev ON ev.EventoID = ea.EventoID
        JOIN aulas a ON a.AulaID = ea.AulaID
@@ -1574,8 +1698,7 @@ router.get("/qr/:token", async (req, res) => {
 
     const [[ep]] = await dbPromise.query(
       `SELECT ep.EventoProyectoID, ep.EventoID, ep.ProyectoID,
-              ep.HorarioID, ep.QRCode,
-              qs.QRSessionID, qs.ExpiresAt, qs.UsedAt,
+              ep.HorarioID, ep.QRCode, ep.TokenQR,
               p.Titulo, p.Descripcion, p.Categoria, p.Progreso,
               p.AlumnoID, p.ProfesorID,
               al.Nombre AS NombreAlumno,  al.Email AS EmailAlumno,
@@ -1592,27 +1715,12 @@ router.get("/qr/:token", async (req, res) => {
        JOIN eventos    ev ON ep.EventoID   = ev.EventoID
        LEFT JOIN horariosevento h  ON ep.HorarioID   = h.HorarioID
        LEFT JOIN aulas          au ON h.AulaID        = au.AulaID
-       LEFT JOIN qr_sessions qs
-              ON qs.EventoProyectoID = ep.EventoProyectoID
-             AND qs.Token = ?
-       WHERE (
-           (qs.Token = ? AND qs.ExpiresAt > NOW())
-           OR ep.QRCode = ?
-           OR ep.TokenQR = ?
-         )
+       WHERE (ep.QRCode = ? OR ep.TokenQR = ?)
          AND ep.Estado = 'aceptado'
-       ORDER BY qs.CreatedAt DESC
        LIMIT 1`,
-      [token, token, token, token]
+      [token, token]
     );
     if (!ep) return res.status(404).json({ message: "QR invalido, expirado o proyecto no aprobado" });
-
-    if (ep.QRSessionID && !ep.UsedAt) {
-      await dbPromise.query(
-        "UPDATE qr_sessions SET UsedAt = NOW() WHERE QRSessionID = ?",
-        [ep.QRSessionID]
-      );
-    }
 
     // Obtener rúbrica del evento
     let rubrica = null;
@@ -1696,8 +1804,9 @@ router.get("/qr/:token", async (req, res) => {
       },
       rubrica,
       qr: {
-        QRSessionID: ep.QRSessionID || null,
-        ExpiresAt: ep.ExpiresAt || null,
+        EventoProyectoID: ep.EventoProyectoID,
+        Token: ep.QRCode || ep.TokenQR,
+        ExpiresAt: null,
       },
     });
   } catch (err) {

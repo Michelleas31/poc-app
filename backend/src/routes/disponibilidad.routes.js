@@ -138,11 +138,8 @@ router.put('/disponibilidad/:id/seleccionar', async (req, res) => {
     });
   }
 
-  let connection;
   try {
-    connection = await dbP.getConnection();
-
-    const [[disp]] = await connection.query(
+    const [[disp]] = await dbP.query(
       `SELECT * FROM disponibilidad_profesor WHERE DisponibilidadID = ? AND Estado = 'disponible'`,
       [req.params.id]
     );
@@ -156,10 +153,10 @@ router.put('/disponibilidad/:id/seleccionar', async (req, res) => {
       return res.status(400).json({ message: 'Este slot no corresponde a tu proyecto' });
     }
 
-    await connection.beginTransaction();
+    await dbP.beginTransaction();
 
     // 1. Marcar disponibilidad como reservada
-    await connection.query(
+    await dbP.query(
       `
       UPDATE disponibilidad_profesor
       SET Estado = 'reservada'
@@ -169,7 +166,7 @@ router.put('/disponibilidad/:id/seleccionar', async (req, res) => {
     );
 
     // 2. Asignar profesor al proyecto
-    await connection.query(
+    await dbP.query(
       `
       UPDATE proyectos
       SET ProfesorID = ?
@@ -179,7 +176,7 @@ router.put('/disponibilidad/:id/seleccionar', async (req, res) => {
     );
 
     // 3. Buscar eventoproyecto pendiente/aceptado
-    const [[eventoProyecto]] = await connection.query(
+    const [[eventoProyecto]] = await dbP.query(
       `
       SELECT EventoProyectoID
       FROM eventoproyectos
@@ -193,7 +190,7 @@ router.put('/disponibilidad/:id/seleccionar', async (req, res) => {
 
     if (eventoProyecto) {
       // ✓ NUEVO: Actualizar eventoproyectos con datos de disponibilidad
-      await connection.query(
+      await dbP.query(
         `
         UPDATE eventoproyectos
         SET 
@@ -217,7 +214,7 @@ router.put('/disponibilidad/:id/seleccionar', async (req, res) => {
       );
 
       // Eliminar evaluadores anteriores
-      await connection.query(
+      await dbP.query(
         `
         DELETE FROM evaluadoresevento
         WHERE EventoProyectoID = ?
@@ -226,7 +223,7 @@ router.put('/disponibilidad/:id/seleccionar', async (req, res) => {
       );
 
       // Agregar el profesor como evaluador
-      await connection.query(
+      await dbP.query(
         `
         INSERT INTO evaluadoresevento
           (EventoProyectoID, ProfesorID)
@@ -236,7 +233,7 @@ router.put('/disponibilidad/:id/seleccionar', async (req, res) => {
       );
     }
 
-    await connection.commit();
+    await dbP.commit();
 
     res.json({
       message: 'Evaluador seleccionado correctamente',
@@ -248,16 +245,12 @@ router.put('/disponibilidad/:id/seleccionar', async (req, res) => {
       Sala: disp.Sala,
     });
   } catch (err) {
-    if (connection) {
-      try { await connection.rollback(); } catch (_) {}
-    }
+    try { await dbP.rollback(); } catch (_) {}
     console.error('Error PUT /disponibilidad/:id/seleccionar:', err);
     res.status(500).json({
       message: 'Error al seleccionar evaluador',
       error: err.message,
     });
-  } finally {
-    if (connection) connection.release();
   }
 });
 

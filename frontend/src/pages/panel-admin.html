@@ -7,7 +7,7 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../styles/panel-profesor.css">
-  <link rel="stylesheet" href="../styles/panel-admin.css">
+  <link rel="stylesheet" href="../styles/panel-admin.css?v=20260512-ia">
 </head>
 <body>
 
@@ -121,6 +121,21 @@
         <line x1="2" y1="20" x2="22" y2="20"></line>
       </svg>
       Analíticas y Ranking
+    </button>
+
+    <span class="nav-section-label">IA</span>
+
+    <button class="nav-item" onclick="showSection('ia-admin', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v4"></path>
+        <path d="M12 18v4"></path>
+        <path d="M4.93 4.93l2.83 2.83"></path>
+        <path d="M16.24 16.24l2.83 2.83"></path>
+        <path d="M2 12h4"></path>
+        <path d="M18 12h4"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      Asistente IA
     </button>
   </nav>
 
@@ -581,6 +596,85 @@
         <div class="analytics-subtitle">Podios historicos generados al finalizar eventos</div>
         <div id="admin-podios-content">
           <div class="empty-text">Cargando podios...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ASISTENTE IA ADMIN -->
+    <div class="section" id="section-ia-admin">
+      <div class="ai-admin-grid">
+        <div class="analytics-card ai-panel">
+          <div class="analytics-title">Validar proyecto con evento</div>
+          <div class="analytics-subtitle">La IA recomienda alineacion tematica. La decision final sigue siendo del admin.</div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Evento</label>
+              <select class="form-control" id="ia-admin-evento"></select>
+            </div>
+            <div class="form-group">
+              <label>Proyecto</label>
+              <select class="form-control" id="ia-admin-proyecto"></select>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="btn-ia-validar" onclick="validarProyectoEventoIA()">Validar con IA</button>
+          <textarea class="form-control ai-output" id="ia-admin-validacion" rows="9" placeholder="Resultado, motivo y recomendaciones apareceran aqui..."></textarea>
+        </div>
+
+        <div class="analytics-card ai-panel">
+          <div class="analytics-title">Mejorar rubricas</div>
+          <div class="analytics-subtitle">Genera una version mejorada y aplicala solo si estas de acuerdo.</div>
+
+          <div class="form-group">
+            <label>Rubrica</label>
+            <select class="form-control" id="ia-admin-rubrica"></select>
+          </div>
+
+          <div class="form-group">
+            <label>Instrucciones opcionales</label>
+            <textarea class="form-control" id="ia-admin-rubrica-input" rows="4" placeholder="Ej. Haz los niveles mas claros para evaluadores nuevos..."></textarea>
+          </div>
+
+          <div class="ia-actions">
+            <button class="btn btn-primary" id="btn-ia-rubrica" onclick="mejorarRubricaIA()">Mejorar con IA</button>
+            <button class="btn btn-success" id="btn-ia-aplicar-rubrica" onclick="aplicarRubricaIA()" disabled>Aplicar mejora</button>
+          </div>
+
+          <textarea class="form-control ai-output" id="ia-admin-rubrica-preview" rows="11" placeholder="Vista previa de la mejora..."></textarea>
+        </div>
+      </div>
+
+      <div class="analytics-card ai-panel">
+        <div class="analytics-head">
+          <div>
+            <div class="analytics-title">Historial de uso de IA</div>
+            <div class="analytics-subtitle">Usuario, rol, proyecto, accion, entrada, respuesta, modelo y proveedor.</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="loadIaHistorialAdmin()">Actualizar</button>
+        </div>
+
+        <div class="table-wrap ai-history-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Usuario</th>
+                <th>Rol</th>
+                <th>Proyecto</th>
+                <th>Accion</th>
+                <th>Entrada</th>
+                <th>Respuesta</th>
+                <th>Modelo</th>
+                <th>Proveedor</th>
+              </tr>
+            </thead>
+            <tbody id="ia-admin-historial">
+              <tr>
+                <td colspan="9" class="empty-cell">Cargando historial...</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1049,6 +1143,6 @@
   <span id="toast-msg"></span>
 </div>
 
-<script src="../panel-admin.js?v=20260507-admin-buttons"></script>
+<script src="../panel-admin.js?v=20260512-ia"></script>
 </body>
 </html>

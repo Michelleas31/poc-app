@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="../styles/panel-profesor.css">
-  <link rel="stylesheet" href="../styles/panel-alumno.css?v=20260507-panel-fix">
+  <link rel="stylesheet" href="../styles/panel-alumno.css?v=20260517-ai">
 
   <!-- QR render sin npm -->
   <script src="https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js"></script>
@@ -40,6 +40,21 @@
           <path d="M9 12l2 2 4-4"></path>
         </svg>
         Mi proyecto
+      </button>
+
+      <button class="nav-item" onclick="showSection('asistente-ia', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v4"></path>
+          <path d="M12 18v4"></path>
+          <path d="M4.93 4.93l2.83 2.83"></path>
+          <path d="M16.24 16.24l2.83 2.83"></path>
+          <path d="M2 12h4"></path>
+          <path d="M18 12h4"></path>
+          <path d="M4.93 19.07l2.83-2.83"></path>
+          <path d="M16.24 7.76l2.83-2.83"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        Asistente IA
       </button>
 
       <span class="nav-section-label">Evaluación</span>
@@ -135,6 +150,89 @@
         <div id="proyecto-content">
           <div style="color:var(--text-muted);font-size:13px;padding:16px">
             Cargando tu proyecto...
+          </div>
+        </div>
+      </section>
+
+      <!-- ASISTENTE IA -->
+      <section class="section" id="section-asistente-ia">
+        <div class="section-card ia-card">
+          <div class="section-card-title no-margin">
+            <span>Asistente IA para mi proyecto</span>
+            <span class="badge badge-blue">Beta</span>
+          </div>
+          <p class="ia-helper">Genera ideas, objetivos, justificacion o mejora textos. Revisa la respuesta antes de guardarla como documento.</p>
+
+          <div class="ia-grid">
+            <div class="ia-form-panel">
+              <div class="form-group">
+                <label>Proyecto</label>
+                <select class="form-control" id="ia-alumno-proyecto"></select>
+              </div>
+
+              <div class="form-group">
+                <label>Accion IA</label>
+                <select class="form-control" id="ia-alumno-accion">
+                  <option value="generar-ideas">Generar ideas de proyecto</option>
+                  <option value="mejorar-descripcion">Mejorar descripcion</option>
+                  <option value="generar-objetivos">Generar objetivos</option>
+                  <option value="generar-justificacion">Generar justificacion</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Informacion base</label>
+                <textarea class="form-control ia-textarea" id="ia-alumno-entrada" rows="8" placeholder="Describe tu idea, problema, tecnologias o contexto del proyecto..."></textarea>
+                <div class="input-hint">Minimo 20 caracteres para generar con IA.</div>
+              </div>
+
+              <button class="btn btn-primary" id="btn-ia-alumno-generar" onclick="generarIaAlumno()">
+                Generar con IA
+              </button>
+            </div>
+
+            <div class="ia-result-panel">
+              <div class="ia-result-head">
+                <div>
+                  <strong>Resultado editable</strong>
+                  <span>Puedes ajustar el texto antes de guardarlo.</span>
+                </div>
+              </div>
+
+              <textarea class="form-control ia-output" id="ia-alumno-respuesta" rows="14" placeholder="La respuesta generada aparecera aqui..."></textarea>
+
+              <div class="ia-actions">
+                <button class="btn btn-ghost" onclick="limpiarIaAlumno()">Limpiar</button>
+                <button class="btn btn-success" id="btn-ia-alumno-guardar" onclick="guardarIaAlumnoDocumento()">
+                  Guardar como documento del proyecto
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card ia-card">
+          <div class="section-card-title no-margin">
+            <span>Agente IA rapido</span>
+            <span class="badge badge-green">/api/ai</span>
+          </div>
+          <p class="ia-helper">Prueba el agente general de OpenRouter con un prompt libre. La API key se usa solo en backend.</p>
+
+          <div class="ai-demo-shell">
+            <div class="form-group">
+              <label>Prompt</label>
+              <textarea class="form-control ia-textarea" id="ai-demo-prompt" rows="5" placeholder="Ej. Dame 3 mejoras para la descripcion de mi proyecto..."></textarea>
+            </div>
+
+            <div class="ia-actions">
+              <button class="btn btn-ghost" onclick="limpiarAgenteAI()">Limpiar</button>
+              <button class="btn btn-primary" id="btn-ai-demo" onclick="probarAgenteAI()">Enviar al agente IA</button>
+            </div>
+
+            <div class="form-group ai-demo-response-wrap">
+              <label>Respuesta</label>
+              <textarea class="form-control ia-output ai-demo-response" id="ai-demo-response" rows="8" readonly placeholder="La respuesta del agente aparecera aqui..."></textarea>
+            </div>
           </div>
         </div>
       </section>
@@ -574,6 +672,6 @@
     <span id="toast-msg"></span>
   </div>
 
-  <script src="../panel-alumno.js?v=20260507-panel-fix"></script>
+  <script src="../panel-alumno.js?v=20260517-ai"></script>
 </body>
 </html>

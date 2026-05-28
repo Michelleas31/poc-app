@@ -1337,3 +1337,107 @@ button {
     width: 100%;
   }
 }
+
+/* Asistente IA alumno */
+.ia-card {
+  overflow: hidden;
+}
+
+.ia-helper {
+  max-width: 780px;
+  margin: 8px 0 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ia-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, .9fr) minmax(320px, 1.1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.ia-form-panel,
+.ia-result-panel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 18px;
+  background: rgba(30, 36, 54, .42);
+}
+
+.ia-result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ia-result-head strong {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.ia-result-head span,
+.input-hint {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ia-textarea,
+.ia-output {
+  min-height: 160px;
+  line-height: 1.6;
+}
+
+.ia-output {
+  min-height: 280px;
+  resize: vertical;
+}
+
+.ia-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.ai-demo-shell {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 18px;
+  background: rgba(30, 36, 54, .42);
+}
+
+.ai-demo-response-wrap {
+  margin-top: 16px;
+}
+
+.ai-demo-response {
+  min-height: 180px;
+}
+
+@media (max-width: 980px) {
+  .ia-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ia-form-panel,
+  .ia-result-panel {
+    padding: 14px;
+  }
+
+  .ia-actions .btn,
+  #btn-ia-alumno-generar {
+    width: 100%;
+  }
+}

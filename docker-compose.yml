@@ -19,6 +19,10 @@ services:
       - ./db/migracion_projectmanager_uiux_flujo.sql:/docker-entrypoint-initdb.d/03-migracion_projectmanager_uiux_flujo.sql:ro
       - ./db/migrations/20260502_frontend_flow_fixes.sql:/docker-entrypoint-initdb.d/04-20260502_frontend_flow_fixes.sql:ro
       - ./db/migrations/20260507_event_aula_flow.sql:/docker-entrypoint-initdb.d/05-20260507_event_aula_flow.sql:ro
+      - ./db/migrations/20260512_asistente_ia.sql:/docker-entrypoint-initdb.d/06-20260512_asistente_ia.sql:ro
+      - ./db/migrations/20260518_estado_qr_inscripciones.sql:/docker-entrypoint-initdb.d/07-20260518_estado_qr_inscripciones.sql:ro
+      - ./db/migrations/20260518_moderadores_resultados_compat.sql:/docker-entrypoint-initdb.d/08-20260518_moderadores_resultados_compat.sql:ro
+      - ./db/migrations/20260518_completar_schema_programa.sql:/docker-entrypoint-initdb.d/09-20260518_completar_schema_programa.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$${MARIADB_ROOT_PASSWORD} --silent"]
       interval: 5s

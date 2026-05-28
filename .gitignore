@@ -12,3 +12,4 @@ dist/
 # SQL local
 db/database.sql
 
+.codex/

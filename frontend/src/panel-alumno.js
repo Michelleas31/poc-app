@@ -20,6 +20,7 @@ let pasoActual = 1;
 let proyectoActualId = null;
 let todosAlumnos = [];
 let todosProfesores = [];
+let iaAlumnoProyectos = [];
 
 // ── INIT ────────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,7 @@ function showSection(id, el) {
 
   const titulos = {
     'mi-proyecto': ['Mi proyecto', 'Progreso, etapas y documentos'],
+    'asistente-ia': ['Asistente IA', 'Ideas, objetivos y documentos generados'],
     evaluador: ['Elegir evaluador', 'Profesores disponibles para evaluarte'],
     'mi-qr': ['Generar QR', 'Codigo QR temporal para presentar'],
     inscribir: ['Inscribir a evento', 'Registra tu proyecto en una feria'],
@@ -91,6 +93,8 @@ function showSection(id, el) {
   if (pageSubtitle) pageSubtitle.textContent = subtitulo;
 
   if (id === 'evaluador') loadEvaluadoresDisponibles();
+
+  if (id === 'asistente-ia') loadIaAlumno();
 
   if (id === 'mi-qr') loadMiQR();
 
@@ -141,7 +145,202 @@ function closeModal(id) {
   if (modal) modal.classList.remove('open');
 }
 
+function getAlumnoUsuarioId() {
+  return user?.id || user?.UsuarioID || user?.usuarioId;
+}
+
+function actualizarSelectIaAlumno() {
+  const select = document.getElementById('ia-alumno-proyecto');
+  if (!select) return;
+
+  if (!iaAlumnoProyectos.length) {
+    select.innerHTML = '<option value="">Sin proyecto activo</option>';
+    return;
+  }
+
+  select.innerHTML = iaAlumnoProyectos
+    .map((p) => `
+      <option value="${p.ProyectoID}" ${Number(p.ProyectoID) === Number(proyectoActualId) ? 'selected' : ''}>
+        ${escapeHtml(p.Titulo || 'Proyecto sin titulo')}
+      </option>
+    `)
+    .join('');
+}
+
+async function loadIaAlumno() {
+  if (!iaAlumnoProyectos.length) {
+    await loadMiProyecto();
+  }
+
+  actualizarSelectIaAlumno();
+
+  const entrada = document.getElementById('ia-alumno-entrada');
+  if (entrada && !entrada.value.trim() && miProyecto) {
+    entrada.value = [
+      miProyecto.Titulo ? `Titulo: ${miProyecto.Titulo}` : '',
+      miProyecto.Categoria ? `Categoria: ${miProyecto.Categoria}` : '',
+      miProyecto.Descripcion ? `Descripcion: ${miProyecto.Descripcion}` : '',
+    ].filter(Boolean).join('\n');
+  }
+}
+
+function getIaAlumnoEndpoint(accion) {
+  const map = {
+    'generar-ideas': '/ia/generar-ideas',
+    'mejorar-descripcion': '/ia/mejorar-descripcion',
+    'generar-objetivos': '/ia/generar-objetivos',
+    'generar-justificacion': '/ia/generar-justificacion',
+  };
+
+  return map[accion] || map['generar-ideas'];
+}
+
+async function generarIaAlumno() {
+  const proyectoId = document.getElementById('ia-alumno-proyecto')?.value || proyectoActualId;
+  const accion = document.getElementById('ia-alumno-accion')?.value || 'generar-ideas';
+  const entrada = document.getElementById('ia-alumno-entrada')?.value.trim() || '';
+  const respuesta = document.getElementById('ia-alumno-respuesta');
+  const btn = document.getElementById('btn-ia-alumno-generar');
+
+  if (!proyectoId) return toast('Selecciona un proyecto', 'red');
+  if (entrada.length < 20) return toast('Escribe al menos 20 caracteres', 'red');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Generando...';
+  }
+
+  try {
+    const response = await fetch(`${API}${getIaAlumnoEndpoint(accion)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        UsuarioID: getAlumnoUsuarioId(),
+        ProyectoID: Number(proyectoId),
+        Texto: entrada,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.message || 'No se pudo generar contenido con IA');
+    }
+
+    if (respuesta) respuesta.value = data.data || '';
+    toast('Texto generado con IA');
+  } catch (error) {
+    console.error(error);
+    toast(error.message || 'Error al generar con IA', 'red');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Generar con IA';
+    }
+  }
+}
+
+function limpiarIaAlumno() {
+  const respuesta = document.getElementById('ia-alumno-respuesta');
+  if (respuesta) respuesta.value = '';
+}
+
+async function guardarIaAlumnoDocumento() {
+  const proyectoId = document.getElementById('ia-alumno-proyecto')?.value || proyectoActualId;
+  const texto = document.getElementById('ia-alumno-respuesta')?.value.trim() || '';
+  const btn = document.getElementById('btn-ia-alumno-guardar');
+
+  if (!proyectoId) return toast('Selecciona un proyecto', 'red');
+  if (!texto) return toast('No hay texto generado para guardar', 'red');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+  }
+
+  try {
+    const response = await fetch(`${API}/ia/guardar-documento`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        UsuarioID: getAlumnoUsuarioId(),
+        ProyectoID: Number(proyectoId),
+        Titulo: 'Documento generado con IA',
+        Texto: texto,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.message || 'No se pudo guardar el documento');
+    }
+
+    toast('Documento IA guardado');
+    if (Number(proyectoId) === Number(proyectoActualId)) {
+      cargarDocumentos(proyectoActualId);
+    }
+  } catch (error) {
+    console.error(error);
+    toast(error.message || 'Error al guardar documento IA', 'red');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Guardar como documento del proyecto';
+    }
+  }
+}
+
 // ── MI PROYECTO ──────────────────────────────────────────────────────────────
+
+async function probarAgenteAI() {
+  const prompt = document.getElementById('ai-demo-prompt')?.value.trim() || '';
+  const responseBox = document.getElementById('ai-demo-response');
+  const btn = document.getElementById('btn-ai-demo');
+
+  if (!prompt) return toast('Escribe un prompt para el agente IA', 'red');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Pensando...';
+  }
+
+  if (responseBox) responseBox.value = 'Generando respuesta...';
+
+  try {
+    const response = await fetch(`${API}/ai`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.message || 'No se pudo generar la respuesta');
+    }
+
+    const result = data.data?.response || data.data || '';
+    if (responseBox) responseBox.value = result;
+    toast('Respuesta generada');
+  } catch (error) {
+    console.error(error);
+    if (responseBox) responseBox.value = '';
+    toast(error.message || 'Error al usar el agente IA', 'red');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Enviar al agente IA';
+    }
+  }
+}
+
+function limpiarAgenteAI() {
+  const prompt = document.getElementById('ai-demo-prompt');
+  const responseBox = document.getElementById('ai-demo-response');
+  if (prompt) prompt.value = '';
+  if (responseBox) responseBox.value = '';
+}
 
 async function loadMiProyecto() {
   const container = document.getElementById('proyecto-content');
@@ -152,6 +351,8 @@ async function loadMiProyecto() {
     const data = await response.json();
 
     const proyectos = Array.isArray(data) ? data : [];
+    iaAlumnoProyectos = proyectos;
+    actualizarSelectIaAlumno();
 
     if (!proyectos.length) {
       container.innerHTML = `
@@ -1136,7 +1337,7 @@ async function renderQRPresentation(data) {
 
   const token = data.token || '';
   const evalUrl = new URL(`evaluar-qr.html?token=${encodeURIComponent(token)}`, window.location.href).href;
-  const expires = data.expiresAt ? formatFechaHora(data.expiresAt) : '24 horas';
+  const expires = data.expiresAt ? formatFechaHora(data.expiresAt) : 'Vigente mientras la inscripcion este aprobada';
 
   container.innerHTML = `
     <div class="qr-result-card">
@@ -1501,18 +1702,40 @@ async function loadEventosDisponibles() {
   if (!grid) return;
 
   try {
-    const response = await fetch(`${API}/eventos`);
-    const data = await response.json();
+    if (!miProyecto) {
+      await loadMiProyecto();
+    }
+
+    const [eventosResponse, inscripcionesResponse] = await Promise.all([
+      fetch(`${API}/eventos`),
+      miProyecto?.ProyectoID
+        ? fetch(`${API}/eventos/proyectos?proyectoId=${miProyecto.ProyectoID}`)
+        : Promise.resolve({ ok: true, json: async () => [] }),
+    ]);
+
+    const data = await eventosResponse.json();
+    const inscripcionesData = await inscripcionesResponse.json();
+    const inscritos = new Set(
+      (Array.isArray(inscripcionesData) ? inscripcionesData : [])
+        .map((item) => Number(item.EventoID))
+        .filter(Boolean),
+    );
+    const tieneInscripcionActiva = (Array.isArray(inscripcionesData) ? inscripcionesData : [])
+      .some((item) => ['pendiente', 'aceptado'].includes(String(item.Estado || '').toLowerCase()));
 
     const disponibles = Array.isArray(data)
-      ? data.filter((evento) => ['proximo', 'activo'].includes(evento.Estado))
+      ? data.filter((evento) =>
+          !tieneInscripcionActiva &&
+          ['proximo', 'activo'].includes(evento.Estado) &&
+          !inscritos.has(Number(evento.EventoID))
+        )
       : [];
 
     if (!disponibles.length) {
       grid.innerHTML = `
         <div class="empty" style="grid-column:1/-1">
           <h3>Sin eventos disponibles</h3>
-          <p>No hay eventos activos en este momento.</p>
+          <p>${tieneInscripcionActiva ? 'Tu proyecto ya tiene una inscripción activa.' : 'No hay eventos activos nuevos para inscribir este proyecto.'}</p>
         </div>
       `;
       return;
@@ -1714,6 +1937,12 @@ async function confirmarInscripcion() {
         rol: 'Participante',
       })),
     ];
+
+    const existentesResponse = await fetch(`${API}/eventos/proyectos?proyectoId=${proyectoId}&eventoId=${inscripcion.eventoId}`);
+    const existentes = await existentesResponse.json().catch(() => []);
+    if (Array.isArray(existentes) && existentes.length) {
+      throw new Error('Este proyecto ya está inscrito en el evento seleccionado');
+    }
 
     const inscripcionResponse = await fetch(`${API}/eventos/proyectos`, {
       method: 'POST',

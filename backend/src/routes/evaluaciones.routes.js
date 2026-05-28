@@ -87,11 +87,13 @@ async function insertarEvaluacionEventoCompatible({
   ProfesorID,
   RubricaID,
   puntajeTotal,
+  puntajeMax = 0,
+  EvaluacionID = null,
   comentarios = null,
 }) {
   try {
     const [[eventoProyecto]] = await dbP.query(
-      `SELECT ep.EventoID
+      `SELECT ep.EventoID, ep.EventoProyectoID
        FROM eventoproyectos ep
        LEFT JOIN horariosevento h ON h.HorarioID = ep.HorarioID
        LEFT JOIN evaluadoresaula ea
@@ -116,19 +118,24 @@ async function insertarEvaluacionEventoCompatible({
 
     const [result] = await dbP.query(
       `INSERT INTO evaluacionesevento
-         (EventoID, ProyectoID, ProfesorID, RubricaID, PuntajeTotal, Comentario, Fecha)
-       VALUES (?, ?, ?, ?, ?, ?, NOW())
+         (EventoID, ProyectoID, EventoProyectoID, ProfesorID, EvaluacionID, PuntajeTotal, PuntajeMaximo, Porcentaje, Comentarios, FechaEvaluacion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
        ON DUPLICATE KEY UPDATE
-         RubricaID = VALUES(RubricaID),
+         EvaluacionID = VALUES(EvaluacionID),
          PuntajeTotal = VALUES(PuntajeTotal),
-         Comentario = VALUES(Comentario),
-         Fecha = NOW()`,
+         PuntajeMaximo = VALUES(PuntajeMaximo),
+         Porcentaje = VALUES(Porcentaje),
+         Comentarios = VALUES(Comentarios),
+         FechaEvaluacion = NOW()`,
       [
         eventoProyecto.EventoID,
         ProyectoID,
+        eventoProyecto.EventoProyectoID,
         ProfesorID,
-        RubricaID,
+        EvaluacionID,
         puntajeTotal,
+        puntajeMax,
+        puntajeMax > 0 ? Number(((puntajeTotal / puntajeMax) * 100).toFixed(2)) : 0,
         comentarios,
       ]
     );
@@ -389,6 +396,8 @@ router.post('/evaluaciones', async (req, res) => {
       ProfesorID,
       RubricaID,
       puntajeTotal,
+      puntajeMax,
+      EvaluacionID,
       comentarios: Comentarios || req.body.Observaciones || null,
     });
 
@@ -566,6 +575,8 @@ router.post('/proyectos/:id/evaluacion', async (req, res) => {
       ProfesorID,
       RubricaID,
       puntajeTotal,
+      puntajeMax,
+      EvaluacionID,
       comentarios: Comentarios || Observaciones || null,
     });
 
