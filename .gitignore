@@ -12,4 +12,6 @@ dist/
 # SQL local
 db/database.sql
 
+# Herramientas locales
 .codex/
+/.codex/
